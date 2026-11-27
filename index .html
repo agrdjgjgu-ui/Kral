@@ -1,0 +1,3268 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kraliyet Sancağı: İmparatorluk Yükselişi</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0d0a08;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #f5efe6;
+            touch-action: none;
+        }
+
+        #game-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+        }
+
+        /* Başlangıç & Yükleme Ekranı */
+        #boot-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: radial-gradient(circle at center, #332215 0%, #0b0806 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #boot-screen h1 {
+            font-size: clamp(24px, 5.5vw, 42px);
+            font-weight: 900;
+            color: #ffd15c;
+            letter-spacing: 1px;
+            text-shadow: 0 4px 22px rgba(212, 175, 55, 0.6);
+            margin-bottom: 8px;
+        }
+
+        #boot-screen p {
+            max-width: 520px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #e5d8c8;
+            margin-bottom: 16px;
+        }
+
+        #boot-status {
+            font-size: 13px;
+            font-weight: 700;
+            color: #fde68a;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            padding: 8px 16px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+            max-width: 92%;
+        }
+
+        #boot-error {
+            display: none;
+            font-size: 12px;
+            color: #fecaca;
+            background: rgba(127, 29, 29, 0.92);
+            border: 1px solid #f87171;
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            max-width: 92%;
+            word-break: break-word;
+        }
+
+        #start-btn {
+            display: none;
+            background: linear-gradient(180deg, #f59e0b, #b45309);
+            border: 2px solid #fef08a;
+            color: #fffbeb;
+            font-size: 17px;
+            font-weight: 800;
+            padding: 14px 36px;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 8px 28px rgba(245, 158, 11, 0.55);
+        }
+
+        #start-btn:active { transform: scale(0.96); }
+
+        .controls-hint {
+            margin-top: 14px;
+            font-size: 11px;
+            color: #c2b4a6;
+            max-width: 490px;
+            line-height: 1.45;
+        }
+
+        /* Üst Kompakt HUD */
+        #top-hud {
+            position: fixed;
+            top: 6px;
+            left: 6px;
+            right: 6px;
+            z-index: 20;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 5px;
+            pointer-events: none;
+        }
+
+        .hud-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px;
+            background: rgba(18, 14, 11, 0.88);
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            border-radius: 12px;
+            padding: 4px 7px;
+            pointer-events: auto;
+        }
+
+        .stat-pill {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            white-space: nowrap;
+        }
+
+        .stat-gold { color: #ffd15c; }
+        .stat-food { color: #7ee081; }
+        .stat-mat { color: #93c5fd; }
+        .stat-moral { color: #f9a8d4; }
+        .stat-hp { color: #f87171; }
+        .stat-time { color: #fde68a; }
+        .stat-wealth { color: #c4b5fd; border: 1px solid rgba(196, 181, 253, 0.35); }
+
+        .hud-btn {
+            background: linear-gradient(180deg, #4b382a, #2c2017);
+            border: 1px solid #d4af37;
+            color: #fde68a;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 7px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .hud-btn:active { transform: scale(0.94); }
+
+        /* Sol Üst Mini-Radar + Aktif Görev Özeti */
+        #left-overlay {
+            position: fixed;
+            top: 56px;
+            left: 8px;
+            z-index: 18;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: none;
+        }
+
+        #minimap-container {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: rgba(14, 11, 9, 0.88);
+            border: 2px solid rgba(212, 175, 55, 0.8);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65);
+            overflow: hidden;
+        }
+
+        #minimap-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #quest-tracker {
+            max-width: 195px;
+            background: rgba(18, 14, 11, 0.84);
+            border-left: 3px solid #f59e0b;
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 10px;
+            padding: 6px 8px;
+            font-size: 10px;
+            line-height: 1.35;
+            color: #f3ece1;
+        }
+
+        #quest-tracker strong {
+            display: block;
+            color: #ffd15c;
+            font-size: 10.5px;
+            margin-bottom: 2px;
+        }
+
+        /* Merkez Nişangah & Hedef Göstergesi */
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 14px;
+            height: 14px;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 240, 200, 0.85);
+            border-radius: 2px;
+        }
+        #crosshair::before { width: 12px; height: 2px; }
+        #crosshair::after { width: 2px; height: 12px; }
+
+        #crosshair.target-active::before, #crosshair.target-active::after {
+            background: #ffd15c;
+            box-shadow: 0 0 8px #ffd15c;
+        }
+
+        #target-prompt {
+            position: fixed;
+            top: calc(50% + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 16;
+            background: rgba(22, 17, 13, 0.92);
+            border: 1px solid #d4af37;
+            color: #fde68a;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            white-space: nowrap;
+        }
+        #target-prompt.visible { opacity: 1; }
+
+        /* Baskın & Bildirim Bannerları */
+        #raid-banner {
+            position: fixed;
+            top: 56px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            background: linear-gradient(90deg, rgba(127, 29, 29, 0.96), rgba(185, 28, 28, 0.96));
+            border: 2px solid #fca5a5;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 12px;
+            box-shadow: 0 0 18px rgba(220, 38, 38, 0.75);
+            display: none;
+            align-items: center;
+            gap: 6px;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        #toast-container {
+            position: fixed;
+            top: 94px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            pointer-events: none;
+            width: 90%;
+            max-width: 410px;
+        }
+
+        .toast-msg {
+            background: rgba(22, 17, 13, 0.95);
+            border-left: 4px solid #d4af37;
+            border: 1px solid rgba(212, 175, 55, 0.55);
+            color: #fef3c7;
+            padding: 7px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.65);
+        }
+
+        /* Yüzen Hasar Sayıları & 3D İsim Etiketleri */
+        #labels-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .npc-label {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            background: rgba(16, 12, 9, 0.84);
+            border: 1px solid rgba(212, 175, 55, 0.6);
+            border-radius: 8px;
+            padding: 2px 7px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .npc-label .name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #fde68a;
+            display: block;
+        }
+
+        .npc-label .role {
+            font-size: 9px;
+            color: #d6ccc2;
+            display: block;
+        }
+
+        .npc-label.enemy {
+            border-color: #ef4444;
+            background: rgba(69, 10, 10, 0.9);
+        }
+
+        .npc-label.enemy .name { color: #fca5a5; }
+
+        .enemy-hp-bar {
+            width: 54px;
+            height: 4px;
+            background: #27272a;
+            border-radius: 2px;
+            margin: 2px auto 0;
+            overflow: hidden;
+        }
+
+        .enemy-hp-fill {
+            height: 100%;
+            background: #ef4444;
+            width: 100%;
+        }
+
+        .dmg-popup {
+            position: fixed;
+            z-index: 35;
+            font-size: 16px;
+            font-weight: 900;
+            color: #fde047;
+            text-shadow: 0 2px 6px #000;
+            pointer-events: none;
+            transition: transform 0.6s ease-out, opacity 0.6s ease-out;
+        }
+
+        /* Dokunmatik Kamera Sürükleme Alanı */
+        #look-zone {
+            position: fixed;
+            inset: 0;
+            z-index: 5;
+        }
+
+        /* Sol Alt Sanal Joystick */
+        #joystick-zone {
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            width: 124px;
+            height: 124px;
+            z-index: 22;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.14) 0%, rgba(20, 16, 13, 0.6) 75%);
+            border: 2px solid rgba(212, 175, 55, 0.48);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+        }
+
+        #joystick-ring {
+            position: absolute;
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            border: 1px dashed rgba(253, 230, 138, 0.35);
+            pointer-events: none;
+        }
+
+        #joystick-knob {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #f5d061, #9a6b19);
+            border: 2px solid #fff3c4;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.65);
+            transform: translate(0px, 0px);
+            pointer-events: none;
+        }
+
+        /* Sağ Alt Aksiyon Butonları (2x2 Düzen) */
+        #action-buttons {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            z-index: 22;
+            display: grid;
+            grid-template-columns: repeat(2, auto);
+            gap: 8px;
+            align-items: end;
+        }
+
+        .act-btn {
+            border-radius: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            font-weight: 800;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+        }
+
+        .act-btn:active { transform: scale(0.92); }
+
+        #btn-diplomacy {
+            width: 72px;
+            height: 58px;
+            background: linear-gradient(145deg, #0369a1, #0c4a6e);
+            border-color: #7dd3fc;
+            font-size: 10.5px;
+        }
+
+        #btn-ferman {
+            width: 72px;
+            height: 58px;
+            background: linear-gradient(145deg, #6d28d9, #4c1d95);
+            border-color: #c4b5fd;
+            font-size: 10.5px;
+        }
+
+        #btn-interact {
+            width: 72px;
+            height: 62px;
+            background: linear-gradient(145deg, #047857, #064e3b);
+            border-color: #6ee7b7;
+            font-size: 10.5px;
+            opacity: 0.8;
+        }
+
+        #btn-interact.ready {
+            opacity: 1;
+            border-color: #fde047;
+            box-shadow: 0 0 18px rgba(250, 204, 21, 0.85);
+            transform: scale(1.04);
+        }
+
+        #btn-attack {
+            width: 78px;
+            height: 62px;
+            background: linear-gradient(145deg, #dc2626, #7f1d1d);
+            border-color: #fca5a5;
+            font-size: 12px;
+        }
+
+        /* Modal Sistemleri */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            background: rgba(10, 8, 7, 0.82);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+        }
+
+        .modal-backdrop.open { display: flex; }
+
+        .modal-card {
+            width: 100%;
+            max-width: 540px;
+            max-height: 88vh;
+            overflow-y: auto;
+            background: linear-gradient(180deg, #241c16 0%, #16110d 100%);
+            border: 2px solid #d4af37;
+            border-radius: 18px;
+            padding: 15px;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.88);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+            padding-bottom: 9px;
+            margin-bottom: 10px;
+        }
+
+        .modal-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #ffd15c;
+        }
+
+        .modal-subtitle {
+            font-size: 11.5px;
+            color: #d6ccc2;
+            margin-top: 2px;
+        }
+
+        .close-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            color: #fde68a;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .npc-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 7px;
+            margin-bottom: 10px;
+        }
+
+        .mini-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 10px;
+            padding: 7px;
+            text-align: center;
+        }
+
+        .mini-box span {
+            display: block;
+            font-size: 10.5px;
+            color: #c7bdb3;
+        }
+
+        .mini-box strong {
+            font-size: 14px;
+            color: #fde68a;
+        }
+
+        .dialogue-box {
+            background: rgba(0, 0, 0, 0.38);
+            border-left: 3px solid #d4af37;
+            padding: 9px 11px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            line-height: 1.45;
+            color: #f3ece1;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #d4af37;
+            margin: 10px 0 6px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 7px;
+        }
+
+        .choice-btn {
+            background: linear-gradient(180deg, #3a2d23, #261d16);
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            color: #f5efe6;
+            padding: 9px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .choice-btn:active {
+            background: linear-gradient(180deg, #4e3c2e, #33271d);
+            border-color: #ffd15c;
+        }
+
+        .choice-btn.active-policy {
+            border: 2px solid #ffd15c;
+            background: linear-gradient(180deg, #5c4524, #3b2b14);
+        }
+
+        .choice-btn.quest-btn {
+            grid-column: span 2;
+            border-color: #38bdf8;
+            background: linear-gradient(180deg, #16374d, #0f2433);
+        }
+
+        .choice-btn.romance-btn {
+            border-color: #f472b6;
+            background: linear-gradient(180deg, #501d37, #311122);
+        }
+
+        .choice-btn.marry-btn {
+            grid-column: span 2;
+            text-align: center;
+            font-size: 13.5px;
+            font-weight: 800;
+            border: 2px solid #ffd15c;
+            background: linear-gradient(90deg, #831843, #b45309);
+            color: #fffbeb;
+        }
+
+        .choice-btn small {
+            display: block;
+            font-size: 10px;
+            color: #d6ccc2;
+            margin-top: 2px;
+            font-weight: 400;
+        }
+
+        .nation-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 9px;
+        }
+
+        .nation-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .nation-head strong {
+            color: #ffd15c;
+            font-size: 13.5px;
+        }
+
+        .nation-badge {
+            font-size: 10.5px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .dynasty-card {
+            background: rgba(212, 175, 55, 0.08);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-top: 6px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        #screen-flash {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 30;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="game-canvas"></canvas>
+    <div id="labels-layer"></div>
+    <div id="look-zone"></div>
+    <div id="screen-flash"></div>
+
+    <!-- Yükleme & Başlangıç Ekranı -->
+    <div id="boot-screen">
+        <h1>👑 KRALİYET SANCAĞI: İMPARATORLUK</h1>
+        <p>Geniş 3D açık dünyada kılıcınla bizzat savaş, haydut kamplarını temizle, komşu devletlerle kervan ticareti veya savaş yap, yeni madenci ve tarımcılar işe alarak zengin bir imparatorluk kur ve hanedanını devam ettir!</p>
+        <div id="boot-status">⏳ Krallık İnşa Ediliyor (3D Motor Yükleniyor)...</div>
+        <div id="boot-error"></div>
+        <button id="start-btn">⚔️ TAHTA GEÇ VE OYNA</button>
+        <div class="controls-hint">
+            📱 <strong>Mobil:</strong> Sol alt joystick ile yürü/koş • Sağ ekrana sürükleyerek etrafa bak • Sağ alt butonlarla saldır, konuş, ferman ve diplomasi yönet.<br>
+            💻 <strong>PC:</strong> WASD ile yürü • Fareyi sürükleyerek bak • Space: Saldır • E: Etkileşim • F: Ferman • R: Diplomasi
+        </div>
+    </div>
+
+    <!-- Sol Üst Mini-Radar & Görev Takipçisi -->
+    <div id="left-overlay">
+        <div id="minimap-container">
+            <canvas id="minimap-canvas" width="96" height="96"></canvas>
+        </div>
+        <div id="quest-tracker">
+            <strong>📜 Aktif Görevler</strong>
+            <div id="quest-tracker-list">Halkınla konuşarak görev al!</div>
+        </div>
+    </div>
+
+    <!-- Üst Kompakt HUD -->
+    <div id="top-hud">
+        <div class="hud-group">
+            <div class="stat-pill stat-time" id="hud-time">👑 Gün 1 • 08:00</div>
+            <div class="stat-pill stat-hp" id="hud-hp">❤️ 120/120</div>
+            <div class="stat-pill stat-gold" id="hud-gold">🪙 450</div>
+            <div class="stat-pill stat-food" id="hud-food">🌾 280</div>
+            <div class="stat-pill stat-mat" id="hud-mat">⚒️ 210</div>
+            <div class="stat-pill stat-moral" id="hud-moral">🎭 %80</div>
+            <div class="stat-pill stat-wealth" id="hud-wealth">🏛️ Gelişen Krallık</div>
+        </div>
+        <div class="hud-group">
+            <button class="hud-btn" id="btn-speed">⏩ 1x</button>
+            <button class="hud-btn" id="btn-skip">⏭️ +6s</button>
+            <button class="hud-btn" id="btn-audio">🔊 Ses</button>
+        </div>
+    </div>
+
+    <!-- Baskın & Bildirimler -->
+    <div id="raid-banner">⚔️ KALE KAPISINA BASKIN VAR! DÜŞMANLARI PÜSKÜRT!</div>
+    <div id="toast-container"></div>
+
+    <!-- Nişangah & Hedef Göstergesi -->
+    <div id="crosshair"></div>
+    <div id="target-prompt">Etkileşim</div>
+
+    <!-- Sol Alt Sanal Joystick -->
+    <div id="joystick-zone">
+        <div id="joystick-ring"></div>
+        <div id="joystick-knob"></div>
+    </div>
+
+    <!-- Sağ Alt Aksiyon Butonları -->
+    <div id="action-buttons">
+        <button class="act-btn" id="btn-diplomacy">🌍<span>DİPLOMASİ</span></button>
+        <button class="act-btn" id="btn-ferman">📜<span>FERMAN</span></button>
+        <button class="act-btn" id="btn-interact">💬<span id="interact-label">ETKİLEŞİM</span></button>
+        <button class="act-btn" id="btn-attack">⚔️<span>SALDIR</span></button>
+    </div>
+
+    <!-- NPC Etkileşim, Görev & Emir Modalı -->
+    <div class="modal-backdrop" id="npc-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="npc-modal-name">Karakter Adı</div>
+                    <div class="modal-subtitle" id="npc-modal-role">Unvan ve Görev</div>
+                </div>
+                <button class="close-btn" onclick="closeModals()">✕</button>
+            </div>
+            <div class="npc-stats-grid">
+                <div class="mini-box"><span>Sadakat</span><strong id="npc-stat-loyalty">%80</strong></div>
+                <div class="mini-box"><span>Moral</span><strong id="npc-stat-morale">%75</strong></div>
+                <div class="mini-box"><span>İlişki</span><strong id="npc-stat-relation">40 / 100</strong></div>
+            </div>
+            <div class="dialogue-box" id="npc-dialogue">"Majesteleri, emirlerinizi bekliyorum."</div>
+
+            <div class="section-label">💬 Sohbet & Kraliyet Görevi</div>
+            <div class="btn-grid" id="npc-quest-buttons"></div>
+
+            <div class="section-label">📋 Birebir Görev Emri Ver</div>
+            <div class="btn-grid">
+                <button class="choice-btn" onclick="assignNpcTask('mine')">⚒️ Madende Çalış<small>+Malzeme & +Altın üretir</small></button>
+                <button class="choice-btn" onclick="assignNpcTask('farm')">🌾 Tarlada Çalış<small>+Erzak üretir</small></button>
+                <button class="choice-btn" onclick="assignNpcTask('guard')">🛡️ Kapıyı / Suru Koru<small>+Savunma & baskında savaşır</small></button>
+                <button class="choice-btn" onclick="assignNpcTask('follow')">👑 Peşimden Gel<small>Seninle gezer & yanında savaşır</small></button>
+            </div>
+
+            <div id="romance-section" style="display:none;">
+                <div class="section-label" id="romance-title">💖 Hanedan & İlişki Etkileşimi</div>
+                <div class="btn-grid" id="romance-buttons"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kraliyet Fermanı, İşçi Alımı & Yönetim Modalı -->
+    <div class="modal-backdrop" id="ferman-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">📜 Kraliyet Fermanı & Ekonomi</div>
+                    <div class="modal-subtitle" id="kingdom-summary">Kale Sv.1 • Savunma: 50 • Kılıç Sv.1</div>
+                </div>
+                <button class="close-btn" onclick="closeModals()">✕</button>
+            </div>
+
+            <div class="section-label">👷 İşgücü & Ordu İstihdamı (Haritada Fiziksel Olarak Doğar)</div>
+            <div class="btn-grid">
+                <button class="choice-btn" onclick="kingdomAction('hire_miner')">⛏️ Maden İşçisi Al<small>75 Altın + 25 Erzak → Madende cevher & altın kazar</small></button>
+                <button class="choice-btn" onclick="kingdomAction('hire_farmer')">🌾 Tarımcı Çiftçi Al<small>65 Altın + 20 Erzak → Tarlada bol erzak üretir</small></button>
+                <button class="choice-btn" onclick="kingdomAction('recruit')">⚔️ Kraliyet Askeri Eğit<small>95 Altın + 40 Erzak → Surlara yeni muhafız katılır</small></button>
+                <button class="choice-btn" onclick="kingdomAction('upgrade_sword')">🗡️ Kral Kılıcını Döv<small>85 Malzeme + 90 Altın → Kendi saldırı hasarın artar</small></button>
+            </div>
+
+            <div class="section-label">💰 Vergi & Tayın Politikası</div>
+            <div class="btn-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <button class="choice-btn" id="tax-low" onclick="setPolicy('tax', 'low')">Düşük Vergi<small>+20 Altın | +4 Moral</small></button>
+                <button class="choice-btn" id="tax-normal" onclick="setPolicy('tax', 'normal')">Normal Vergi<small>+55 Altın | 0 Moral</small></button>
+                <button class="choice-btn" id="tax-high" onclick="setPolicy('tax', 'high')">Ağır Vergi<small>+95 Altın | -7 Moral</small></button>
+            </div>
+            <div class="btn-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 6px;">
+                <button class="choice-btn" id="ration-low" onclick="setPolicy('ration', 'low')">Az Tayın<small>-15 Erzak | -5 Moral</small></button>
+                <button class="choice-btn" id="ration-normal" onclick="setPolicy('ration', 'normal')">Normal Tayın<small>-30 Erzak | +1 Moral</small></button>
+                <button class="choice-btn" id="ration-high" onclick="setPolicy('ration', 'high')">Bol Tayın<small>-50 Erzak | +6 Moral</small></button>
+            </div>
+
+            <div class="section-label">🏰 Saray Yatırımları</div>
+            <div class="btn-grid">
+                <button class="choice-btn" onclick="kingdomAction('feast')">🍖 Kraliyet Ziyafeti Ver<small>70 Altın + 55 Erzak → +18 Moral & +10 Sadakat</small></button>
+                <button class="choice-btn" onclick="kingdomAction('wall')">🧱 Surları Güçlendir<small>90 Malzeme + 50 Altın → +25 Savunma</small></button>
+                <button class="choice-btn" onclick="kingdomAction('workshop')">🏭 Dökümhane & Değirmen<small>85 Malzeme + 65 Altın → +%35 Üretim</small></button>
+                <button class="choice-btn" onclick="kingdomAction('heal')">🧪 Kraliyet Şifacısı<small>30 Altın → Kral Canını Tamamen Yeniler</small></button>
+            </div>
+
+            <div class="section-label">👑 Hanedan & Soy Kaydı</div>
+            <div class="dynasty-card" id="dynasty-info"></div>
+        </div>
+    </div>
+
+    <!-- Komşu Devletler, Ticaret Kervanları & Savaş Modalı -->
+    <div class="modal-backdrop" id="diplomacy-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">🌍 Komşu Devletler & Ticaret</div>
+                    <div class="modal-subtitle" id="diplomacy-summary">Devlet Statüsü: Gelişen Krallık • Aktif Kervan: 0</div>
+                </div>
+                <button class="close-btn" onclick="closeModals()">✕</button>
+            </div>
+            <div id="nations-list"></div>
+        </div>
+    </div>
+
+    <!-- 3 Aşamalı Three.js CDN Yükleyici -->
+    <script>
+        function showBootError(msg) {
+            const errBox = document.getElementById('boot-error');
+            const statusBox = document.getElementById('boot-status');
+            if (statusBox) statusBox.textContent = '⚠️ Başlatma Hatası Oluştu';
+            if (errBox) {
+                errBox.style.display = 'block';
+                errBox.textContent = msg;
+            }
+        }
+
+        window.addEventListener('error', function(e) {
+            if (e && e.message) showBootError('Hata: ' + e.message);
+        });
+
+        (function loadThreeWithFallback() {
+            const cdns = [
+                'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+                'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js',
+                'https://unpkg.com/three@0.128.0/build/three.min.js'
+            ];
+            let idx = 0;
+
+            function tryNext() {
+                if (window.THREE) {
+                    window.__threeReady = true;
+                    if (window.__onThreeLoaded) window.__onThreeLoaded();
+                    return;
+                }
+                if (idx >= cdns.length) {
+                    showBootError('3D kütüphanesi (Three.js) yüklenemedi. İnternet bağlantınızı kontrol edip yenileyin.');
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = cdns[idx++];
+                script.async = true;
+                script.onload = function() {
+                    window.__threeReady = true;
+                    if (window.__onThreeLoaded) window.__onThreeLoaded();
+                };
+                script.onerror = function() { tryNext(); };
+                document.head.appendChild(script);
+            }
+            tryNext();
+        })();
+    </script>
+
+    <!-- Ana Oyun Motoru -->
+    <script>
+    function bootGame() {
+        if (window.__gameBooted) return;
+        if (!window.THREE) {
+            window.__onThreeLoaded = bootGame;
+            return;
+        }
+        window.__gameBooted = true;
+
+        const bootStatus = document.getElementById('boot-status');
+        const startBtn = document.getElementById('start-btn');
+
+        try {
+            bootStatus.textContent = '🏰 360x360 Açık Dünya, Devletler ve 3D Karakterler Hazırlanıyor...';
+
+            // =========================================================================
+            // 1. WEB AUDIO API SES SENTEZLEYİCİ
+            // =========================================================================
+            class SoundEngine {
+                constructor() {
+                    this.ctx = null;
+                    this.muted = false;
+                    this.lastStepTime = 0;
+                }
+
+                init() {
+                    try {
+                        if (!this.ctx) {
+                            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                            if (AudioCtx) this.ctx = new AudioCtx();
+                        }
+                        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+                    } catch (e) {}
+                }
+
+                toggleMute() {
+                    this.muted = !this.muted;
+                    return !this.muted;
+                }
+
+                playTone(freq, type, duration, vol = 0.14, slideFreq = null, delay = 0) {
+                    if (this.muted || !this.ctx) return;
+                    try {
+                        const now = this.ctx.currentTime + delay;
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = type;
+                        osc.frequency.setValueAtTime(freq, now);
+                        if (slideFreq) osc.frequency.exponentialRampToValueAtTime(slideFreq, now + duration);
+                        gain.gain.setValueAtTime(0.001, now);
+                        gain.gain.linearRampToValueAtTime(vol, now + 0.015);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now);
+                        osc.stop(now + duration + 0.02);
+                    } catch (e) {}
+                }
+
+                playNoise(duration, vol = 0.14, filterFreq = 1000) {
+                    if (this.muted || !this.ctx) return;
+                    try {
+                        const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+                        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                        const data = buffer.getChannelData(0);
+                        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                        const noise = this.ctx.createBufferSource();
+                        noise.buffer = buffer;
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'bandpass';
+                        filter.frequency.value = filterFreq;
+                        const gain = this.ctx.createGain();
+                        const now = this.ctx.currentTime;
+                        gain.gain.setValueAtTime(vol, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                        noise.connect(filter);
+                        filter.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        noise.start(now);
+                    } catch (e) {}
+                }
+
+                playStep(isRunning) {
+                    if (this.muted || !this.ctx) return;
+                    const now = performance.now();
+                    const interval = isRunning ? 310 : 470;
+                    if (now - this.lastStepTime < interval) return;
+                    this.lastStepTime = now;
+                    this.playNoise(0.055, isRunning ? 0.07 : 0.04, 340 + Math.random() * 60);
+                }
+
+                playSwordSwing() {
+                    this.playNoise(0.18, 0.22, 980);
+                    this.playTone(340, 'triangle', 0.15, 0.13, 105);
+                }
+
+                playSwordHit() {
+                    this.playTone(135, 'sawtooth', 0.16, 0.24, 52);
+                    this.playNoise(0.12, 0.24, 1850);
+                }
+
+                playCoin() {
+                    this.playTone(987.77, 'sine', 0.1, 0.13, null, 0);
+                    this.playTone(1318.51, 'sine', 0.18, 0.13, null, 0.07);
+                }
+
+                playInteract() {
+                    this.playTone(523.25, 'sine', 0.12, 0.12, null, 0);
+                    this.playTone(659.25, 'sine', 0.15, 0.12, null, 0.07);
+                }
+
+                playDecree() {
+                    this.playTone(220, 'triangle', 0.18, 0.15, 165, 0);
+                    this.playTone(330, 'triangle', 0.25, 0.15, 440, 0.1);
+                }
+
+                playRaidAlarm() {
+                    for (let i = 0; i < 3; i++) {
+                        this.playTone(185, 'sawtooth', 0.38, 0.2, 140, i * 0.48);
+                        this.playTone(275, 'sawtooth', 0.38, 0.15, 210, i * 0.48);
+                    }
+                }
+
+                playWeddingFanfare() {
+                    const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                    const times = [0, 0.14, 0.28, 0.42, 0.64, 0.8];
+                    notes.forEach((n, idx) => this.playTone(n, 'triangle', 0.3, 0.16, null, times[idx]));
+                }
+            }
+
+            const sound = new SoundEngine();
+
+            // =========================================================================
+            // 2. HAFİF MOBİL DOSTU PROSEDÜREL DOKULAR (128x128)
+            // =========================================================================
+            function createProceduralTexture(type) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+
+                if (type === 'stone') {
+                    ctx.fillStyle = '#5c5852';
+                    ctx.fillRect(0, 0, 128, 128);
+                    for (let y = 0; y < 128; y += 16) {
+                        const offset = (y / 16) % 2 === 0 ? 0 : 16;
+                        for (let x = -16; x < 128; x += 32) {
+                            const shade = 76 + Math.floor(Math.random() * 26);
+                            ctx.fillStyle = `rgb(${shade}, ${shade - 3}, ${shade - 8})`;
+                            ctx.fillRect(x + offset + 1, y + 1, 30, 14);
+                        }
+                    }
+                } else if (type === 'grass') {
+                    ctx.fillStyle = '#36592c';
+                    ctx.fillRect(0, 0, 128, 128);
+                    for (let i = 0; i < 420; i++) {
+                        ctx.fillStyle = Math.random() > 0.5 ? '#436e36' : '#294521';
+                        ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 4);
+                    }
+                } else if (type === 'carpet') {
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.fillRect(0, 0, 128, 128);
+                    ctx.strokeStyle = '#eab308';
+                    ctx.lineWidth = 6;
+                    ctx.strokeRect(6, 6, 116, 116);
+                } else if (type === 'wood') {
+                    ctx.fillStyle = '#5c3a21';
+                    ctx.fillRect(0, 0, 128, 128);
+                    for (let y = 0; y < 128; y += 16) {
+                        ctx.fillStyle = y % 32 === 0 ? '#4d301b' : '#694327';
+                        ctx.fillRect(0, y, 128, 14);
+                    }
+                } else if (type === 'farmland') {
+                    ctx.fillStyle = '#4a321f';
+                    ctx.fillRect(0, 0, 128, 128);
+                    for (let y = 0; y < 128; y += 12) {
+                        ctx.fillStyle = y % 24 === 0 ? '#3b2616' : '#5c3f28';
+                        ctx.fillRect(0, y, 128, 7);
+                    }
+                } else if (type === 'cobble') {
+                    ctx.fillStyle = '#6b655e';
+                    ctx.fillRect(0, 0, 128, 128);
+                    for (let i = 0; i < 65; i++) {
+                        const g = 86 + Math.floor(Math.random() * 32);
+                        ctx.fillStyle = `rgb(${g}, ${g - 4}, ${g - 9})`;
+                        ctx.beginPath();
+                        ctx.arc(Math.random() * 120, Math.random() * 120, 6 + Math.random() * 6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.wrapS = THREE.RepeatWrapping;
+                tex.wrapT = THREE.RepeatWrapping;
+                return tex;
+            }
+
+            // =========================================================================
+            // 3. OYUN DURUMU, KOMŞU DEVLETLER VE GÖREV VERİLERİ
+            // =========================================================================
+            const gameState = {
+                started: false,
+                day: 1,
+                hour: 8.0,
+                timeSpeed: 1,
+                gold: 450,
+                food: 280,
+                materials: 210,
+                morale: 80,
+                hp: 120,
+                maxHp: 120,
+                defense: 50,
+                swordLevel: 1,
+                productionBonus: 1.0,
+                castleLevel: 1,
+                taxPolicy: 'normal',
+                rationPolicy: 'normal',
+                gateClosed: false,
+                spouseId: null,
+                heirs: [],
+                heirProgress: 0,
+                raidActive: false,
+                lastRaidDay: 0,
+                selectedNpc: null,
+                modalOpen: false,
+                banditsKilled: 0,
+                caravansSent: 0,
+                hiredWorkers: 0
+            };
+
+            const nations = [
+                {
+                    id: 'valoria',
+                    name: 'Valoria İmparatorluğu',
+                    desc: 'Zengin batı krallığı. Altın ve lüks eşya ticareti güçlüdür.',
+                    relation: 55,
+                    status: 'Barış & Ticaret',
+                    atWar: false,
+                    allied: false,
+                    caravanDays: 0,
+                    caravanReward: 240
+                },
+                {
+                    id: 'kizilkum',
+                    name: 'Kızılkum Sultanlığı',
+                    desc: 'Güney baharat ve mücevher kervanlarının merkezi.',
+                    relation: 60,
+                    status: 'Dost Tüccarlar',
+                    atWar: false,
+                    allied: false,
+                    caravanDays: 0,
+                    caravanReward: 270
+                },
+                {
+                    id: 'kuzey',
+                    name: 'Kuzey Fjordu Konfederasyonu',
+                    desc: 'Savaşçı klanlar birliği. Demir cevheri ve paralı asker kaynağı.',
+                    relation: 35,
+                    status: 'Gergin Sınır',
+                    atWar: false,
+                    allied: false,
+                    caravanDays: 0,
+                    caravanReward: 210
+                }
+            ];
+
+            const quests = {
+                bandit_hunt: {
+                    id: 'bandit_hunt',
+                    giver: 'boran',
+                    title: 'Orman Haydutlarını Temizle',
+                    desc: 'Sınır ormanındaki 4 haydutu kılıcınla yok et.',
+                    accepted: false,
+                    completed: false,
+                    target: 4,
+                    rewardGold: 420,
+                    rewardMat: 60
+                },
+                ore_supply: {
+                    id: 'ore_supply',
+                    giver: 'riza',
+                    title: 'Kraliyet Cephaneliği Sevkiyatı',
+                    desc: 'Atölyeye 250 Malzeme stokla veya teslim et.',
+                    accepted: false,
+                    completed: false,
+                    target: 250,
+                    rewardGold: 360,
+                    rewardMat: 0
+                },
+                farm_expansion: {
+                    id: 'farm_expansion',
+                    giver: 'leyla',
+                    title: 'Büyük Hasat Seferberliği',
+                    desc: 'Yeni işçi al (En az 2 yeni madenci/tarımcı istihdam et).',
+                    accepted: false,
+                    completed: false,
+                    target: 2,
+                    rewardGold: 340,
+                    rewardFood: 120
+                },
+                silk_caravan: {
+                    id: 'silk_caravan',
+                    giver: 'kerem',
+                    title: 'Komşu Devletlere Kervan',
+                    desc: 'Diplomasi panelinden en az 2 ticaret kervanı gönder.',
+                    accepted: false,
+                    completed: false,
+                    target: 2,
+                    rewardGold: 520,
+                    rewardMat: 50
+                },
+                rich_empire: {
+                    id: 'rich_empire',
+                    giver: 'altan',
+                    title: 'Altın İmparatorluk Hazinesi',
+                    desc: 'Krallık hazinesini 2000 Altın seviyesine ulaştır.',
+                    accepted: false,
+                    completed: false,
+                    target: 2000,
+                    rewardGold: 1000,
+                    rewardMat: 150
+                }
+            };
+
+            function getWealthTitle() {
+                if (gameState.gold >= 3000) return '👑 Altın İmparatorluk';
+                if (gameState.gold >= 1500) return '💎 Zengin Devlet';
+                if (gameState.gold >= 700) return '🏛️ Müreffeh Krallık';
+                return '🏰 Gelişen Beylik';
+            }
+
+            // =========================================================================
+            // 4. WEBGL RENDERER (MOBİL BELLEK OPTİMİZASYONLU), SAHNE & IŞIK
+            // =========================================================================
+            const canvas = document.getElementById('game-canvas');
+            const renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: false,
+                powerPreference: 'high-performance'
+            });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = false;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87a8c4);
+            scene.fog = new THREE.FogExp2(0x87a8c4, 0.0058);
+
+            const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 270);
+            const player = {
+                pos: new THREE.Vector3(0, 1.75, -48),
+                yaw: Math.PI,
+                pitch: 0,
+                speed: 7.0,
+                runSpeed: 11.8,
+                attackCooldown: 0,
+                swingTimer: 0
+            };
+
+            const hemiLight = new THREE.HemisphereLight(0xfff4e0, 0x3b4d34, 0.94);
+            scene.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfff1d6, 0.96);
+            dirLight.position.set(45, 78, 35);
+            scene.add(dirLight);
+
+            const texStone = createProceduralTexture('stone');
+            texStone.repeat.set(30, 30);
+            const texGrass = createProceduralTexture('grass');
+            texGrass.repeat.set(54, 54);
+            const texCarpet = createProceduralTexture('carpet');
+            texCarpet.repeat.set(1, 6);
+            const texWood = createProceduralTexture('wood');
+            texWood.repeat.set(4, 4);
+            const texFarm = createProceduralTexture('farmland');
+            texFarm.repeat.set(6, 6);
+            const texCobble = createProceduralTexture('cobble');
+            texCobble.repeat.set(8, 26);
+
+            const matStone = new THREE.MeshStandardMaterial({ map: texStone, roughness: 0.85 });
+            const matWall = new THREE.MeshStandardMaterial({ color: 0x6b665e, roughness: 0.9 });
+            const matDarkStone = new THREE.MeshStandardMaterial({ color: 0x433f3a, roughness: 0.9 });
+            const matWood = new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.8 });
+            const matGold = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.65, roughness: 0.28 });
+            const matRed = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.7 });
+            const matCobble = new THREE.MeshStandardMaterial({ map: texCobble, roughness: 0.9 });
+            const matPlaster = new THREE.MeshStandardMaterial({ color: 0xe7dec8, roughness: 0.85 });
+
+            const colliders = [];
+            function addBox(w, h, d, x, y, z, mat, solid = true) {
+                const geo = new THREE.BoxGeometry(w, h, d);
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(x, y, z);
+                scene.add(mesh);
+                if (solid) {
+                    colliders.push({
+                        minX: x - w / 2 - 0.55,
+                        maxX: x + w / 2 + 0.55,
+                        minZ: z - d / 2 - 0.55,
+                        maxZ: z + d / 2 + 0.55
+                    });
+                }
+                return mesh;
+            }
+
+            // 1. 360x360 Açık Dünya Vadisi & Kale Zemini
+            const outerGround = new THREE.Mesh(
+                new THREE.PlaneGeometry(360, 360),
+                new THREE.MeshStandardMaterial({ map: texGrass, roughness: 0.95 })
+            );
+            outerGround.rotation.x = -Math.PI / 2;
+            scene.add(outerGround);
+
+            const courtyard = new THREE.Mesh(new THREE.PlaneGeometry(116, 114), matStone);
+            courtyard.rotation.x = -Math.PI / 2;
+            courtyard.position.set(0, 0.02, -4);
+            scene.add(courtyard);
+
+            const mainRoad = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 175), matCobble);
+            mainRoad.rotation.x = -Math.PI / 2;
+            mainRoad.position.set(0, 0.04, 34);
+            scene.add(mainRoad);
+
+            const crossRoad = new THREE.Mesh(new THREE.PlaneGeometry(98, 6), matCobble);
+            crossRoad.rotation.x = -Math.PI / 2;
+            crossRoad.position.set(0, 0.04, -4);
+            scene.add(crossRoad);
+
+            // 2. Büyük Taht Odası & Hazine Salonu (Z = -60 ile -42)
+            addBox(28, 0.4, 18, 0, 0.2, -51, matDarkStone, false);
+            addBox(28, 8.5, 1.4, 0, 4.25, -60, matWall);
+            addBox(1.4, 8.5, 18, -13.5, 4.25, -51, matWall);
+            addBox(1.4, 8.5, 18, 13.5, 4.25, -51, matWall);
+            addBox(29, 0.8, 19, 0, 8.8, -51, matWood, false);
+
+            const carpet = new THREE.Mesh(
+                new THREE.PlaneGeometry(4.6, 18),
+                new THREE.MeshStandardMaterial({ map: texCarpet, roughness: 0.8 })
+            );
+            carpet.rotation.x = -Math.PI / 2;
+            carpet.position.set(0, 0.42, -50);
+            scene.add(carpet);
+
+            // Hazine Sandıkları (Zenginlik görseli)
+            addBox(1.8, 1.0, 1.1, -9.5, 0.9, -56, matGold, true);
+            addBox(1.8, 1.0, 1.1, 9.5, 0.9, -56, matGold, true);
+            addBox(3.4, 0.9, 2.0, 8.5, 0.85, -49, matWood, true);
+
+            // Altın Taht
+            const throneGroup = new THREE.Group();
+            throneGroup.position.set(0, 0.4, -57.5);
+            const throneBase = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.6, 2.4), matDarkStone);
+            throneBase.position.y = 0.3;
+            const throneSeat = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.85, 1.4), matRed);
+            throneSeat.position.y = 0.9;
+            const throneBack = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3.1, 0.38), matGold);
+            throneBack.position.set(0, 2.15, -0.58);
+            const throneArmL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.25, 1.4), matGold);
+            throneArmL.position.set(-0.88, 1.15, 0);
+            const throneArmR = throneArmL.clone();
+            throneArmR.position.x = 0.88;
+            throneGroup.add(throneBase, throneSeat, throneBack, throneArmL, throneArmR);
+            scene.add(throneGroup);
+
+            // Meşaleler
+            const torchStickGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.8, 6);
+            const torchFlameGeo = new THREE.SphereGeometry(0.16, 6, 6);
+            const torchFlameMat = new THREE.MeshBasicMaterial({ color: 0xff9e22 });
+            function addTorch(x, y, z, withLight = false) {
+                const stick = new THREE.Mesh(torchStickGeo, matWood);
+                stick.position.set(x, y, z);
+                const flame = new THREE.Mesh(torchFlameGeo, torchFlameMat);
+                flame.position.set(x, y + 0.48, z);
+                scene.add(stick, flame);
+                if (withLight) {
+                    const light = new THREE.PointLight(0xff8c1a, 1.15, 22);
+                    light.position.set(x, y + 0.6, z);
+                    scene.add(light);
+                    return { light, baseIntensity: 1.15 };
+                }
+                return null;
+            }
+            const torches = [
+                addTorch(-4.8, 2.6, -58.8, true),
+                addTorch(4.8, 2.6, -58.8, false),
+                addTorch(-4.8, 2.6, -43, false),
+                addTorch(4.8, 2.6, -43, true),
+                addTorch(-6.5, 3.0, 50.5, true),
+                addTorch(6.5, 3.0, 50.5, false),
+                addTorch(-38.8, 1.2, 22, true)
+            ].filter(Boolean);
+
+            const bannerGeo = new THREE.BoxGeometry(1.4, 3.8, 0.1);
+            const emblemGeo = new THREE.BoxGeometry(0.6, 0.6, 0.14);
+            [-9, -4.5, 4.5, 9].forEach(bx => {
+                const banner = new THREE.Mesh(bannerGeo, matRed);
+                banner.position.set(bx, 5.0, -59.1);
+                const emblem = new THREE.Mesh(emblemGeo, matGold);
+                emblem.position.set(bx, 5.2, -59.1);
+                scene.add(banner, emblem);
+            });
+
+            // 3. Dış Surlar, Gözcü Kuleleri ve Kale Kapısı (Z = +52)
+            addBox(1.8, 7.2, 114, -58, 3.6, -4, matWall);
+            addBox(1.8, 7.2, 114, 58, 3.6, -4, matWall);
+            addBox(44, 7.2, 1.8, -36, 3.6, -60, matWall);
+            addBox(44, 7.2, 1.8, 36, 3.6, -60, matWall);
+            addBox(52, 7.2, 1.8, -32, 3.6, 52, matWall);
+            addBox(52, 7.2, 1.8, 32, 3.6, 52, matWall);
+            addBox(13, 2.4, 2.4, 0, 6.8, 52, matDarkStone);
+
+            [[-58, -60], [58, -60], [-58, 52], [58, 52], [-58, -4], [58, -4], [-8, 52], [8, 52]].forEach(([tx, tz]) => {
+                addBox(6.0, 10.5, 6.0, tx, 5.25, tz, matDarkStone);
+            });
+
+            const gateMesh = new THREE.Mesh(new THREE.BoxGeometry(11.6, 5.6, 0.8), matWood);
+            gateMesh.position.set(0, 7.8, 52);
+            scene.add(gateMesh);
+
+            // 4. Kışla & Talim Meydanı (Kuzey-Doğu)
+            addBox(16, 5.0, 9, 34, 2.5, -42, matWood);
+            const barracksRoof = new THREE.Mesh(new THREE.ConeGeometry(10.5, 3.2, 4), matRed);
+            barracksRoof.position.set(34, 6.6, -42);
+            barracksRoof.rotation.y = Math.PI / 4;
+            scene.add(barracksRoof);
+
+            const dummyHeadGeo = new THREE.SphereGeometry(0.24, 6, 6);
+            const dummyHeadMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
+            [24, 29, 34].forEach(dx => {
+                addBox(0.25, 1.8, 0.25, dx, 0.9, -28, matWood, false);
+                addBox(1.1, 0.25, 0.25, dx, 1.35, -28, matWood, false);
+                const dummyHead = new THREE.Mesh(dummyHeadGeo, dummyHeadMat);
+                dummyHead.position.set(dx, 1.95, -28);
+                scene.add(dummyHead);
+            });
+
+            // 5. Ortaçağ Köyü & Pazar Yeri (Batı & Merkez)
+            function buildHouse(hx, hz, w, d, roofColor) {
+                addBox(w, 4.2, d, hx, 2.1, hz, matPlaster, true);
+                addBox(w + 0.3, 0.3, d + 0.3, hx, 2.2, hz, matWood, false);
+                const roof = new THREE.Mesh(
+                    new THREE.ConeGeometry(Math.max(w, d) * 0.78, 2.8, 4),
+                    new THREE.MeshStandardMaterial({ color: roofColor })
+                );
+                roof.position.set(hx, 5.6, hz);
+                roof.rotation.y = Math.PI / 4;
+                scene.add(roof);
+            }
+            buildHouse(-36, -34, 8, 7, 0x7f1d1d);
+            buildHouse(-36, -20, 7, 8, 0x78350f);
+            buildHouse(-22, -24, 7, 7, 0x1e3a8a);
+            buildHouse(-44, -8, 8, 7, 0x7f1d1d);
+
+            const wellRing = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.6, 1.1, 10), matDarkStone);
+            wellRing.position.set(-22, 0.55, -10);
+            scene.add(wellRing);
+            addBox(0.25, 2.4, 0.25, -23.3, 1.6, -10, matWood, false);
+            addBox(0.25, 2.4, 0.25, -20.7, 1.6, -10, matWood, false);
+            const wellRoof = new THREE.Mesh(new THREE.ConeGeometry(2.1, 1.2, 4), matRed);
+            wellRoof.position.set(-22, 3.2, -10);
+            wellRoof.rotation.y = Math.PI / 4;
+            scene.add(wellRoof);
+
+            [[-15, -15, 0xdc2626], [-15, -8, 0x2563eb], [-28, -12, 0xd97706]].forEach(([sx, sz, col]) => {
+                addBox(3.0, 1.0, 1.6, sx, 0.5, sz, matWood, true);
+                const awning = new THREE.Mesh(
+                    new THREE.BoxGeometry(3.2, 0.15, 1.9),
+                    new THREE.MeshStandardMaterial({ color: col })
+                );
+                awning.position.set(sx, 2.3, sz);
+                scene.add(awning);
+            });
+
+            // 6. Maden Ocağı & Dökümhane (Güney-Batı)
+            addBox(10, 0.3, 12, -38, 0.15, 26, matDarkStone, false);
+            addBox(0.6, 4.8, 12, -43.5, 2.4, 26, matWood);
+            addBox(10.5, 0.4, 12.5, -38, 4.9, 26, matWood, false);
+            addBox(1.6, 1.0, 0.9, -36, 0.65, 24, new THREE.MeshStandardMaterial({ color: 0x27272a, metalness: 0.6 }), true);
+
+            const rockMat = new THREE.MeshStandardMaterial({ color: 0x52525b, roughness: 0.8 });
+            const goldOreMat = new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.6, roughness: 0.4 });
+            [[-34, 34, 2.2, false], [-38, 38, 2.6, true], [-30, 38, 1.8, false], [-42, 33, 2.0, true]].forEach(([rx, rz, sc, isGold]) => {
+                const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(sc, 0), isGold ? goldOreMat : rockMat);
+                rock.position.set(rx, sc * 0.6, rz);
+                scene.add(rock);
+            });
+
+            // 7. Büyük Tarlalar & Dönen Yel Değirmeni (Güney-Doğu)
+            const farmPatch = new THREE.Mesh(
+                new THREE.BoxGeometry(22, 0.25, 24),
+                new THREE.MeshStandardMaterial({ map: texFarm, roughness: 0.95 })
+            );
+            farmPatch.position.set(34, 0.13, 24);
+            scene.add(farmPatch);
+
+            const wheatGeo = new THREE.CylinderGeometry(0.18, 0.25, 1.05, 5);
+            const wheatMat = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.7 });
+            for (let fx = 25; fx <= 43; fx += 2.6) {
+                for (let fz = 14; fz <= 34; fz += 2.8) {
+                    const stalk = new THREE.Mesh(wheatGeo, wheatMat);
+                    stalk.position.set(fx, 0.65, fz);
+                    scene.add(stalk);
+                }
+            }
+
+            const millTower = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, 9.5, 8), matPlaster);
+            millTower.position.set(46, 4.75, 14);
+            scene.add(millTower);
+            const millRoof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2.5, 8), matRed);
+            millRoof.position.set(46, 10.6, 14);
+            scene.add(millRoof);
+            const windmillBlades = new THREE.Group();
+            windmillBlades.position.set(43.2, 8.2, 14);
+            windmillBlades.add(
+                new THREE.Mesh(new THREE.BoxGeometry(0.2, 7.6, 0.65), matWood),
+                new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.65, 7.6), matWood)
+            );
+            scene.add(windmillBlades);
+
+            // 8. Gül Bahçesi & Çardak (Doğu Merkez)
+            const gardenLawn = new THREE.Mesh(
+                new THREE.CylinderGeometry(10.5, 10.5, 0.2, 16),
+                new THREE.MeshStandardMaterial({ map: texGrass, roughness: 0.9 })
+            );
+            gardenLawn.position.set(28, 0.11, -12);
+            scene.add(gardenLawn);
+            [[25.2, -14.8], [30.8, -14.8], [25.2, -9.2], [30.8, -9.2]].forEach(([px, pz]) => {
+                addBox(0.35, 3.8, 0.35, px, 1.9, pz, matWood, false);
+            });
+            const gazeboRoof = new THREE.Mesh(new THREE.ConeGeometry(5.0, 2.2, 6), matRed);
+            gazeboRoof.position.set(28, 4.8, -12);
+            scene.add(gazeboRoof);
+
+            // 9. Sınır Ormanı & Haydut Kampı (Güney Dış Vadi Z = 65..120)
+            const trunkGeo = new THREE.CylinderGeometry(0.35, 0.5, 3.2, 6);
+            const crown1Geo = new THREE.ConeGeometry(2.4, 4.2, 6);
+            const crown2Geo = new THREE.ConeGeometry(1.8, 3.5, 6);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16 });
+            const leafMat = new THREE.MeshStandardMaterial({ color: 0x1e4620 });
+
+            function addTree(tx, tz, scale = 1) {
+                const group = new THREE.Group();
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                trunk.position.y = 1.6;
+                const crown1 = new THREE.Mesh(crown1Geo, leafMat);
+                crown1.position.y = 4.4;
+                const crown2 = new THREE.Mesh(crown2Geo, leafMat);
+                crown2.position.y = 6.4;
+                group.add(trunk, crown1, crown2);
+                group.position.set(tx, 0, tz);
+                group.scale.setScalar(scale);
+                scene.add(group);
+            }
+
+            [
+                [-22, 64, 1.2], [22, 64, 1.3], [-38, 72, 1.4], [38, 72, 1.1],
+                [-16, 84, 1.3], [18, 86, 1.4], [-48, 88, 1.2], [46, 92, 1.5],
+                [-28, 108, 1.3], [26, 110, 1.2], [-68, -20, 1.4], [68, -15, 1.3],
+                [-68, 25, 1.5], [68, 30, 1.4], [-66, -48, 1.3], [66, -45, 1.2]
+            ].forEach(([tx, tz, sc]) => addTree(tx, tz, sc));
+
+            // Haydut Kampı Çadırları (Z = 98)
+            [[-12, 98], [12, 98]].forEach(([bx, bz]) => {
+                const tent = new THREE.Mesh(new THREE.ConeGeometry(3.5, 3.2, 4), matRed);
+                tent.position.set(bx, 1.6, bz);
+                tent.rotation.y = Math.PI / 4;
+                scene.add(tent);
+            });
+            addTorch(0, 0.5, 98, false);
+
+            // =========================================================================
+            // 5. BİRİNCİ ŞAHIS (FPS) KRAL KILICI & KALKAN MODELİ
+            // =========================================================================
+            const weaponPivot = new THREE.Group();
+            camera.add(weaponPivot);
+            scene.add(camera);
+
+            const armMesh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.45), matRed);
+            armMesh.position.set(0.38, -0.34, -0.35);
+
+            const hiltMesh = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.06), matGold);
+            hiltMesh.position.set(0.38, -0.26, -0.58);
+
+            const bladeMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(0.045, 0.82, 0.095),
+                new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.18 })
+            );
+            bladeMesh.position.set(0.38, 0.14, -0.62);
+            bladeMesh.rotation.x = -0.22;
+            weaponPivot.add(armMesh, hiltMesh, bladeMesh);
+
+            // =========================================================================
+            // 6. DETAYLI ÇOK PARÇALI 3D KARAKTER MODELİ OLUŞTURUCU
+            // =========================================================================
+            const labelsLayer = document.getElementById('labels-layer');
+            const sharedCharGeo = {
+                leg: new THREE.BoxGeometry(0.22, 0.72, 0.22),
+                torso: new THREE.BoxGeometry(0.56, 0.78, 0.32),
+                head: new THREE.BoxGeometry(0.38, 0.38, 0.38),
+                arm: new THREE.BoxGeometry(0.18, 0.66, 0.18),
+                shoulder: new THREE.BoxGeometry(0.24, 0.22, 0.36),
+                cape: new THREE.BoxGeometry(0.54, 0.88, 0.06),
+                helmet: new THREE.BoxGeometry(0.42, 0.26, 0.42),
+                hair: new THREE.BoxGeometry(0.41, 0.22, 0.41),
+                crown: new THREE.CylinderGeometry(0.16, 0.18, 0.14, 6),
+                sword: new THREE.BoxGeometry(0.05, 0.76, 0.08),
+                staff: new THREE.CylinderGeometry(0.035, 0.035, 1.45, 6),
+                pickaxe: new THREE.BoxGeometry(0.46, 0.07, 0.07)
+            };
+
+            function createCharacterMesh(opts) {
+                const root = new THREE.Group();
+                const skinMat = new THREE.MeshStandardMaterial({ color: opts.skin || 0xf1c27d, roughness: 0.75 });
+                const tunicMat = new THREE.MeshStandardMaterial({ color: opts.tunic || 0x3b82f6, roughness: 0.8 });
+                const accentMat = new THREE.MeshStandardMaterial({ color: opts.accent || 0xfacc15, roughness: 0.5 });
+                const pantsMat = new THREE.MeshStandardMaterial({ color: 0x292524, roughness: 0.9 });
+
+                const legL = new THREE.Mesh(sharedCharGeo.leg, pantsMat);
+                legL.position.set(-0.14, 0.36, 0);
+                const legR = new THREE.Mesh(sharedCharGeo.leg, pantsMat);
+                legR.position.set(0.14, 0.36, 0);
+                root.add(legL, legR);
+
+                const torso = new THREE.Mesh(sharedCharGeo.torso, tunicMat);
+                torso.position.set(0, 1.11, 0);
+                root.add(torso);
+
+                if (opts.armor) {
+                    const shL = new THREE.Mesh(sharedCharGeo.shoulder, accentMat);
+                    shL.position.set(-0.36, 1.42, 0);
+                    const shR = new THREE.Mesh(sharedCharGeo.shoulder, accentMat);
+                    shR.position.set(0.36, 1.42, 0);
+                    root.add(shL, shR);
+                }
+                if (opts.cape) {
+                    const cape = new THREE.Mesh(sharedCharGeo.cape, accentMat);
+                    cape.position.set(0, 1.05, -0.19);
+                    cape.rotation.x = 0.08;
+                    root.add(cape);
+                }
+
+                const head = new THREE.Mesh(sharedCharGeo.head, skinMat);
+                head.position.set(0, 1.72, 0);
+                root.add(head);
+
+                if (opts.helmet) {
+                    const helm = new THREE.Mesh(sharedCharGeo.helmet, accentMat);
+                    helm.position.set(0, 1.84, 0);
+                    root.add(helm);
+                } else if (opts.hair) {
+                    const hairMesh = new THREE.Mesh(
+                        sharedCharGeo.hair,
+                        new THREE.MeshStandardMaterial({ color: opts.hair, roughness: 0.85 })
+                    );
+                    hairMesh.position.set(0, 1.84, -0.02);
+                    root.add(hairMesh);
+                }
+
+                if (opts.crown) {
+                    const crown = new THREE.Mesh(sharedCharGeo.crown, matGold);
+                    crown.position.set(0, 1.98, 0);
+                    root.add(crown);
+                }
+
+                const armLPivot = new THREE.Group();
+                armLPivot.position.set(-0.38, 1.42, 0);
+                const armL = new THREE.Mesh(sharedCharGeo.arm, tunicMat);
+                armL.position.set(0, -0.28, 0);
+                armLPivot.add(armL);
+
+                const armRPivot = new THREE.Group();
+                armRPivot.position.set(0.38, 1.42, 0);
+                const armR = new THREE.Mesh(sharedCharGeo.arm, tunicMat);
+                armR.position.set(0, -0.28, 0);
+                armRPivot.add(armR);
+
+                if (opts.tool === 'sword') {
+                    const sw = new THREE.Mesh(
+                        sharedCharGeo.sword,
+                        new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.75 })
+                    );
+                    sw.position.set(0, -0.56, 0.32);
+                    sw.rotation.x = Math.PI / 2.4;
+                    armRPivot.add(sw);
+                } else if (opts.tool === 'staff') {
+                    const st = new THREE.Mesh(sharedCharGeo.staff, matWood);
+                    st.position.set(0, -0.32, 0.22);
+                    armRPivot.add(st);
+                } else if (opts.tool === 'pickaxe') {
+                    const handle = new THREE.Mesh(sharedCharGeo.arm, matWood);
+                    handle.position.set(0, -0.52, 0.25);
+                    handle.rotation.x = Math.PI / 2;
+                    const headPick = new THREE.Mesh(sharedCharGeo.pickaxe, matDarkStone);
+                    headPick.position.set(0, -0.52, 0.54);
+                    armRPivot.add(handle, headPick);
+                }
+
+                root.add(armLPivot, armRPivot);
+                scene.add(root);
+
+                const labelEl = document.createElement('div');
+                labelEl.className = 'npc-label' + (opts.isEnemy ? ' enemy' : '');
+                labelEl.innerHTML = `<span class="name">${opts.name}</span><span class="role">${opts.subtitle}</span>` +
+                    (opts.isEnemy ? `<div class="enemy-hp-bar"><div class="enemy-hp-fill"></div></div>` : '');
+                labelsLayer.appendChild(labelEl);
+
+                return { mesh: root, legL, legR, armLPivot, armRPivot, labelEl };
+            }
+
+            // =========================================================================
+            // 7. 28 BAŞLANGIÇ NPC + DİNAMİK İŞÇİ/TARIMCI/ASKER İSTİHDAM SİSTEMİ
+            // =========================================================================
+            const taskLabels = {
+                throne: 'Taht Divanı',
+                mine: 'Madende Çalışıyor',
+                farm: 'Tarlada Çalışıyor',
+                guard: 'Kapıyı / Suru Koruyor',
+                follow: 'Kralı Takip Ediyor',
+                patrol: 'Devriye Geziyor',
+                garden: 'Bahçede Geziniyor',
+                market: 'Pazarda Çalışıyor'
+            };
+
+            const npcs = [
+                {
+                    id: 'altan', name: 'Başvezir Altan', title: 'Kraliyet Başveziri', questId: 'rich_empire',
+                    tunic: 0x4c1d95, accent: 0xfacc15, hair: 0xd6d3d1, cape: true, tool: 'staff',
+                    home: new THREE.Vector3(-4.0, 0, -52), task: 'throne',
+                    loyalty: 92, morale: 85, relation: 75, marriageable: false,
+                    quote: 'Majesteleri, ticareti ve madenleri büyütüp hazinemizi 2000 Altına çıkarırsak komşu devletler önümüzde eğilecektir!'
+                },
+                {
+                    id: 'boran', name: 'Komutan Boran', title: 'Muhafız Komutanı', questId: 'bandit_hunt',
+                    tunic: 0x991b1b, accent: 0xfacc15, helmet: true, armor: true, cape: true, tool: 'sword',
+                    home: new THREE.Vector3(-4.2, 0, 44), task: 'guard',
+                    loyalty: 95, morale: 86, relation: 70, marriageable: false,
+                    quote: 'Kralım! Güney sınır ormanındaki haydut kampı kervanlarımızı tehdit ediyor. Birlikte veya bizzat kılıcınızla onları temizleyelim!'
+                },
+                {
+                    id: 'demir', name: 'Yüzbaşı Demir', title: 'Kışla Yüzbaşısı',
+                    tunic: 0x991b1b, accent: 0x9ca3af, helmet: true, armor: true, tool: 'sword',
+                    home: new THREE.Vector3(26, 0, -32), task: 'guard',
+                    loyalty: 90, morale: 84, relation: 62, marriageable: false,
+                    quote: 'Yeni askerler eğittikçe ordumuz hem surları tutar hem de sınır akınlarında zafer kazanır.'
+                },
+                {
+                    id: 'kaan', name: 'Nöbetçi Kaan', title: 'Kapı Muhafızı',
+                    tunic: 0x7f1d1d, accent: 0x6b7280, helmet: true, armor: true, tool: 'sword',
+                    home: new THREE.Vector3(4.2, 0, 44), task: 'guard',
+                    loyalty: 86, morale: 80, relation: 54, marriageable: false,
+                    quote: 'Kapı nöbetindeyiz Majesteleri, düşman geçit bulamaz!'
+                },
+                {
+                    id: 'alp', name: 'Kıdemli Muhafız Alp', title: 'Ağır Zırhlı Muhafız',
+                    tunic: 0x7f1d1d, accent: 0xd4af37, helmet: true, armor: true, tool: 'sword',
+                    home: new THREE.Vector3(-2.5, 0, 38), task: 'guard',
+                    loyalty: 88, morale: 81, relation: 56, marriageable: false,
+                    quote: 'Emrinizle peşinizden gelip orman haydutlarına karşı yanınızda çarpışabilirim.'
+                },
+                {
+                    id: 'mert', name: 'Muhafız Mert', title: 'Kale Muhafızı',
+                    tunic: 0x7f1d1d, accent: 0x6b7280, helmet: true, armor: true, tool: 'sword',
+                    home: new THREE.Vector3(2.5, 0, 38), task: 'guard',
+                    loyalty: 84, morale: 78, relation: 50, marriageable: false,
+                    quote: 'Kılıcım keskin, kalkanım sağlamdır Kralım!'
+                },
+                {
+                    id: 'oguz', name: 'Muhafız Oğuz', title: 'Batı Sur Nöbetçisi',
+                    tunic: 0x7f1d1d, accent: 0x6b7280, helmet: true, armor: true, tool: 'sword',
+                    home: new THREE.Vector3(-12, 0, 46), task: 'guard',
+                    loyalty: 83, morale: 77, relation: 48, marriageable: false,
+                    quote: 'Batı surlarında gözümüz açık Majesteleri.'
+                },
+                {
+                    id: 'tarik', name: 'Muhafız Tarık', title: 'Doğu Sur Nöbetçisi',
+                    tunic: 0x7f1d1d, accent: 0x6b7280, helmet: true, armor: true, tool: 'sword',
+                    home: new THREE.Vector3(12, 0, 46), task: 'guard',
+                    loyalty: 83, morale: 77, relation: 48, marriageable: false,
+                    quote: 'Doğu surları güvende Hünkarım.'
+                },
+                {
+                    id: 'yavuz', name: 'Saray Muhafızı Yavuz', title: 'Hassa Muhafızı',
+                    tunic: 0x991b1b, accent: 0xfacc15, helmet: true, armor: true, cape: true, tool: 'sword',
+                    home: new THREE.Vector3(-5.5, 0, -44), task: 'throne',
+                    loyalty: 94, morale: 88, relation: 65, marriageable: false,
+                    quote: 'Saray ve hazine salonu koruma altında Kralım.'
+                },
+                {
+                    id: 'emre', name: 'Sınır Gözcüsü Emre', title: 'Öncü Keşifçi',
+                    tunic: 0x365314, accent: 0xa3e635, helmet: true, tool: 'sword',
+                    home: new THREE.Vector3(0, 0, 56), task: 'patrol',
+                    loyalty: 87, morale: 82, relation: 58, marriageable: false,
+                    quote: 'Güney ormanında haydut çadırları kurulduğunu gördüm Kralım!'
+                },
+                {
+                    id: 'riza', name: 'Demirci Usta Rıza', title: 'Baş Demirci', questId: 'ore_supply',
+                    tunic: 0x78350f, accent: 0xd97706, hair: 0x1c1917, tool: 'pickaxe',
+                    home: new THREE.Vector3(-35, 0, 24), task: 'mine',
+                    loyalty: 86, morale: 78, relation: 58, marriageable: false,
+                    quote: 'Maden işçilerimizi artırırsak hem altın damarları buluruz hem de kılıcınızı efsanevi çelikle döverim!'
+                },
+                {
+                    id: 'hasan', name: 'Madenci Hasan', title: 'Kıdemli Madenci',
+                    tunic: 0x44403c, accent: 0xa8a29e, tool: 'pickaxe',
+                    home: new THREE.Vector3(-33, 0, 32), task: 'mine',
+                    loyalty: 78, morale: 74, relation: 45, marriageable: false,
+                    quote: 'Kayalardan altın ve demir cevheri çıkarıyoruz Hünkarım.'
+                },
+                {
+                    id: 'yusuf', name: 'Madenci Yusuf', title: 'Taş Ocağı İşçisi',
+                    tunic: 0x44403c, accent: 0xd6d3d1, tool: 'pickaxe',
+                    home: new THREE.Vector3(-37, 0, 35), task: 'mine',
+                    loyalty: 77, morale: 73, relation: 44, marriageable: false,
+                    quote: 'Kazmamız durmuyor Kralım, ambar malzeme doluyor.'
+                },
+                {
+                    id: 'leyla', name: 'Çiftçi Leyla', title: 'Hasat Başı', questId: 'farm_expansion',
+                    tunic: 0x15803d, accent: 0xfde047, hair: 0x713f12, tool: 'staff',
+                    home: new THREE.Vector3(28, 0, 20), task: 'farm',
+                    loyalty: 88, morale: 82, relation: 60, marriageable: false,
+                    quote: 'Tarlalarımız çok geniş Kralım! Yeni tarımcılar işe alırsanız erzak üretimimiz ikiye katlanır.'
+                },
+                {
+                    id: 'halil', name: 'Değirmenci Halil', title: 'Yel Değirmeni Ustası',
+                    tunic: 0xa16207, accent: 0xfef08a, hair: 0xe7e5e4, tool: 'staff',
+                    home: new THREE.Vector3(41, 0, 16), task: 'farm',
+                    loyalty: 85, morale: 80, relation: 55, marriageable: false,
+                    quote: 'Değirmen taşlarımız halkımız ve ordumuz için un öğütüyor.'
+                },
+                {
+                    id: 'kerem', name: 'Tüccar Kerem', title: 'Kervan Lonca Başı', questId: 'silk_caravan',
+                    tunic: 0x1e40af, accent: 0xfacc15, cape: true,
+                    home: new THREE.Vector3(-17, 0, -13), task: 'market',
+                    loyalty: 84, morale: 82, relation: 58, marriageable: false,
+                    quote: 'Valoria ve Kızılkum devletlerine ticaret kervanları gönderirsek hazinemiz altınla dolup taşar!'
+                },
+                {
+                    id: 'zehra', name: 'Hancı Zehra', title: 'Köy Hanı Sahibi',
+                    tunic: 0x9a3412, accent: 0xfed7aa, hair: 0x451a03,
+                    home: new THREE.Vector3(-22, 0, -13), task: 'market',
+                    loyalty: 84, morale: 83, relation: 58, marriageable: false,
+                    quote: 'İşçiler ve askerler hanımızda moral buluyor Majesteleri.'
+                },
+                {
+                    id: 'mira', name: 'Leydi Mira', title: 'Soylular Temsilcisi',
+                    tunic: 0xbe185d, accent: 0xfde047, hair: 0x451a03, cape: true, crown: true,
+                    home: new THREE.Vector3(27, 0, -13), task: 'garden',
+                    loyalty: 84, morale: 86, relation: 45, marriageable: true,
+                    bonusDesc: '+%25 Altın & Kervan Geliri Bonusu',
+                    quote: 'Zengin ve ihtişamlı bir imparatorluk kurma vizyonunuz beni derinden etkiliyor Kralım.'
+                },
+                {
+                    id: 'kael', name: 'Lord Kael', title: 'Kuzey Sancak Beyi',
+                    tunic: 0x1d4ed8, accent: 0xe2e8f0, hair: 0xfef08a, armor: true, cape: true, tool: 'sword',
+                    home: new THREE.Vector3(5.5, 0, -49), task: 'throne',
+                    loyalty: 88, morale: 82, relation: 45, marriageable: true,
+                    bonusDesc: '+15 Kılıç Hasarı & +20 Savunma',
+                    quote: 'Savaş meydanında yanınızda çarpışmak benim için şereftir Majesteleri.'
+                },
+                {
+                    id: 'selin', name: 'Şifacı Selin', title: 'Baş Şifacı',
+                    tunic: 0x0f766e, accent: 0xa7f3d0, hair: 0x9a3412, cape: true, tool: 'staff',
+                    home: new THREE.Vector3(30, 0, -11), task: 'garden',
+                    loyalty: 90, morale: 88, relation: 45, marriageable: true,
+                    bonusDesc: 'Günlük Tam Can Yenileme & +%15 Moral',
+                    quote: 'Halkın sağlığı ve huzuru en büyük hazinedir Kralım.'
+                },
+                {
+                    id: 'arya', name: 'Leydi Arya', title: 'Kraliyet Başkomutanı',
+                    tunic: 0x7c2d12, accent: 0xfacc15, hair: 0x1c1917, armor: true, cape: true, crown: true, tool: 'sword',
+                    home: new THREE.Vector3(22, 0, -34), task: 'guard',
+                    loyalty: 89, morale: 85, relation: 45, marriageable: true,
+                    bonusDesc: '+%35 Ordu Hasarı & +20 Savunma',
+                    quote: 'Hem tahtta hem savaş meydanında yanınızda duracak bir eş arıyorsanız buradayım Kralım!'
+                }
+            ];
+
+            function registerNpcVisual(npc) {
+                const visual = createCharacterMesh({
+                    name: npc.name,
+                    subtitle: `${npc.title} • ${taskLabels[npc.task]}`,
+                    tunic: npc.tunic,
+                    accent: npc.accent,
+                    hair: npc.hair,
+                    helmet: npc.helmet,
+                    armor: npc.armor,
+                    cape: npc.cape,
+                    crown: npc.crown,
+                    tool: npc.tool
+                });
+                npc.mesh = visual.mesh;
+                npc.visual = visual;
+                npc.mesh.position.copy(npc.home);
+                npc.animPhase = Math.random() * Math.PI * 2;
+                npc.attackTimer = 0;
+            }
+
+            npcs.forEach(registerNpcVisual);
+
+            let hiredMinerCount = 0;
+            let hiredFarmerCount = 0;
+            let hiredGuardCount = 0;
+
+            function spawnDynamicWorker(type) {
+                gameState.hiredWorkers++;
+                if (type === 'miner') {
+                    hiredMinerCount++;
+                    const w = {
+                        id: 'dyn_miner_' + hiredMinerCount,
+                        name: 'Maden İşçisi #' + hiredMinerCount,
+                        title: 'İstihdamlı Madenci',
+                        tunic: 0x57534e, accent: 0xfacc15, tool: 'pickaxe',
+                        home: new THREE.Vector3(-34 - (hiredMinerCount % 3) * 2.5, 0, 29 + (hiredMinerCount % 4) * 2.5),
+                        task: 'mine', loyalty: 90, morale: 85, relation: 60, marriageable: false,
+                        quote: 'Emrinizle madene katıldım Kralım! Altın ve cevher çıkarıyoruz.'
+                    };
+                    registerNpcVisual(w);
+                    npcs.push(w);
+                } else if (type === 'farmer') {
+                    hiredFarmerCount++;
+                    const f = {
+                        id: 'dyn_farmer_' + hiredFarmerCount,
+                        name: 'Tarımcı Çiftçi #' + hiredFarmerCount,
+                        title: 'İstihdamlı Çiftçi',
+                        tunic: 0x166534, accent: 0xfef08a, tool: 'staff',
+                        home: new THREE.Vector3(27 + (hiredFarmerCount % 4) * 3, 0, 17 + (hiredFarmerCount % 4) * 3.5),
+                        task: 'farm', loyalty: 90, morale: 85, relation: 60, marriageable: false,
+                        quote: 'Tarlaları ekmeye başladık Majesteleri, ambarlarımız taşacak!'
+                    };
+                    registerNpcVisual(f);
+                    npcs.push(f);
+                } else if (type === 'guard') {
+                    hiredGuardCount++;
+                    const g = {
+                        id: 'dyn_guard_' + hiredGuardCount,
+                        name: 'Kraliyet Muhafızı #' + hiredGuardCount,
+                        title: 'Eğitimli Asker',
+                        tunic: 0x991b1b, accent: 0xd4af37, helmet: true, armor: true, tool: 'sword',
+                        home: new THREE.Vector3((hiredGuardCount % 2 === 0 ? 1 : -1) * (3 + hiredGuardCount * 1.4), 0, 41),
+                        task: 'guard', loyalty: 95, morale: 86, relation: 60, marriageable: false,
+                        quote: 'Ordunuza katıldım Kralım, emrinizle sefere ve savunmaya hazırım!'
+                    };
+                    registerNpcVisual(g);
+                    npcs.push(g);
+                }
+            }
+
+            // =========================================================================
+            // 8. AÇIK DÜNYA HAYDUT KAMPI & BASKIN SİSTEMİ
+            // =========================================================================
+            const enemies = [];
+
+            function spawnEnemyAt(x, z, title = 'Yağmacı Akıncı', isBanditCamp = false) {
+                const hpVal = (isBanditCamp ? 85 : 75) + gameState.day * 12;
+                const visual = createCharacterMesh({
+                    name: title,
+                    subtitle: isBanditCamp ? 'Haydut Kampı' : 'İstilacı Asker',
+                    skin: 0x8d6e63,
+                    tunic: 0x1c1917,
+                    accent: 0xdc2626,
+                    helmet: true,
+                    armor: true,
+                    tool: 'sword',
+                    isEnemy: true
+                });
+                visual.mesh.position.set(x, 0, z);
+                enemies.push({
+                    mesh: visual.mesh,
+                    visual: visual,
+                    hp: hpVal,
+                    maxHp: hpVal,
+                    speed: 3.6,
+                    attackTimer: 0,
+                    animPhase: Math.random() * 4,
+                    isBanditCamp: isBanditCamp,
+                    anchorX: x,
+                    anchorZ: z
+                });
+            }
+
+            function populateBanditCamp() {
+                const spots = [[-14, 78], [14, 80], [-8, 94], [8, 94], [0, 102], [-18, 104]];
+                spots.forEach(([bx, bz], i) => {
+                    spawnEnemyAt(bx, bz, i === 4 ? 'Haydut Lideri' : 'Orman Haydutu', true);
+                });
+            }
+            populateBanditCamp();
+
+            function startRaid(customTitle = null, customCount = null) {
+                if (gameState.raidActive) return;
+                gameState.raidActive = true;
+                gameState.lastRaidDay = gameState.day;
+                document.getElementById('raid-banner').style.display = 'flex';
+                sound.playRaidAlarm();
+                showToast(customTitle || '⚔️ KALE KAPISINA BASKIN! Kılıcını çek ve surları savun!');
+
+                const count = customCount || (7 + Math.min(6, gameState.day));
+                for (let i = 0; i < count; i++) {
+                    const row = Math.floor(i / 4);
+                    const col = i % 4;
+                    const startX = (col - 1.5) * 2.5 + (Math.random() - 0.5);
+                    const startZ = 60 + row * 4.2 + Math.random() * 2;
+                    spawnEnemyAt(startX, startZ, 'İstilacı Akıncı', false);
+                }
+            }
+
+            function removeEnemy(index) {
+                const e = enemies[index];
+                scene.remove(e.mesh);
+                e.visual.labelEl.remove();
+
+                // Öldürme ganimeti
+                const lootG = 22 + Math.floor(Math.random() * 18);
+                const lootM = 8 + Math.floor(Math.random() * 10);
+                gameState.gold += lootG;
+                gameState.materials += lootM;
+                gameState.banditsKilled++;
+                sound.playCoin();
+
+                enemies.splice(index, 1);
+                checkQuestProgress();
+
+                const activeRaiders = enemies.filter(x => !x.isBanditCamp);
+                if (activeRaiders.length === 0 && gameState.raidActive) {
+                    gameState.raidActive = false;
+                    document.getElementById('raid-banner').style.display = 'none';
+                    const bonusGold = 120 + gameState.day * 20;
+                    gameState.gold += bonusGold;
+                    gameState.morale = Math.min(100, gameState.morale + 10);
+                    sound.playWeddingFanfare();
+                    showToast(`🏆 Baskın püskürtüldü! +${bonusGold} Zafer Altını & +10 Moral!`);
+                }
+                updateHud();
+            }
+
+            // =========================================================================
+            // 9. KONTROLLER: MOBİL JOYSTICK + DOKUNMATİK KAMERA + PC KLAVYE/FARE
+            // =========================================================================
+            const joystickZone = document.getElementById('joystick-zone');
+            const joystickKnob = document.getElementById('joystick-knob');
+            const lookZone = document.getElementById('look-zone');
+
+            const input = { moveX: 0, moveY: 0, isRunning: false, keys: {} };
+            let joyTouchId = null;
+            const joyMaxRadius = 42;
+
+            function handleJoystickMove(clientX, clientY) {
+                const rect = joystickZone.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                let dx = clientX - cx;
+                let dy = clientY - cy;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist > joyMaxRadius) {
+                    dx = (dx / dist) * joyMaxRadius;
+                    dy = (dy / dist) * joyMaxRadius;
+                }
+                joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+                input.moveX = dx / joyMaxRadius;
+                input.moveY = dy / joyMaxRadius;
+                input.isRunning = dist > joyMaxRadius * 0.72;
+            }
+
+            function resetJoystick() {
+                joyTouchId = null;
+                joystickKnob.style.transform = 'translate(0px, 0px)';
+                input.moveX = 0;
+                input.moveY = 0;
+                input.isRunning = false;
+            }
+
+            joystickZone.addEventListener('touchstart', e => {
+                e.preventDefault();
+                sound.init();
+                const t = e.changedTouches[0];
+                joyTouchId = t.identifier;
+                handleJoystickMove(t.clientX, t.clientY);
+            }, { passive: false });
+
+            joystickZone.addEventListener('touchmove', e => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if (t.identifier === joyTouchId) handleJoystickMove(t.clientX, t.clientY);
+                }
+            }, { passive: false });
+
+            joystickZone.addEventListener('touchend', e => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === joyTouchId) resetJoystick();
+                }
+            });
+            joystickZone.addEventListener('touchcancel', resetJoystick);
+
+            let joyMouseDown = false;
+            joystickZone.addEventListener('mousedown', e => {
+                joyMouseDown = true;
+                handleJoystickMove(e.clientX, e.clientY);
+            });
+            window.addEventListener('mousemove', e => { if (joyMouseDown) handleJoystickMove(e.clientX, e.clientY); });
+            window.addEventListener('mouseup', () => { if (joyMouseDown) { joyMouseDown = false; resetJoystick(); } });
+
+            let lookTouchId = null;
+            let lastLookX = 0;
+            let lastLookY = 0;
+            let mouseLooking = false;
+
+            lookZone.addEventListener('touchstart', e => {
+                if (gameState.modalOpen) return;
+                sound.init();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if (lookTouchId === null && t.identifier !== joyTouchId) {
+                        lookTouchId = t.identifier;
+                        lastLookX = t.clientX;
+                        lastLookY = t.clientY;
+                    }
+                }
+            }, { passive: true });
+
+            lookZone.addEventListener('touchmove', e => {
+                if (gameState.modalOpen) return;
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if (t.identifier === lookTouchId) {
+                        const dx = t.clientX - lastLookX;
+                        const dy = t.clientY - lastLookY;
+                        lastLookX = t.clientX;
+                        lastLookY = t.clientY;
+                        player.yaw -= dx * 0.0052;
+                        player.pitch = Math.max(-1.15, Math.min(1.15, player.pitch - dy * 0.0045));
+                    }
+                }
+            }, { passive: true });
+
+            lookZone.addEventListener('touchend', e => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === lookTouchId) lookTouchId = null;
+                }
+            });
+
+            lookZone.addEventListener('mousedown', e => {
+                if (gameState.modalOpen) return;
+                sound.init();
+                mouseLooking = true;
+                lastLookX = e.clientX;
+                lastLookY = e.clientY;
+            });
+
+            window.addEventListener('mousemove', e => {
+                if (!mouseLooking || gameState.modalOpen) return;
+                const dx = e.clientX - lastLookX;
+                const dy = e.clientY - lastLookY;
+                lastLookX = e.clientX;
+                lastLookY = e.clientY;
+                player.yaw -= dx * 0.0042;
+                player.pitch = Math.max(-1.15, Math.min(1.15, player.pitch - dy * 0.0038));
+            });
+
+            window.addEventListener('mouseup', () => { mouseLooking = false; });
+
+            window.addEventListener('keydown', e => {
+                input.keys[e.code] = true;
+                if (!gameState.started) return;
+                if (e.code === 'Space' && !gameState.modalOpen) {
+                    e.preventDefault();
+                    performAttack();
+                } else if (e.code === 'KeyE' && !gameState.modalOpen) {
+                    triggerInteract();
+                } else if (e.code === 'KeyF') {
+                    if (gameState.modalOpen) closeModals();
+                    else openFermanModal();
+                } else if (e.code === 'KeyR') {
+                    if (gameState.modalOpen) closeModals();
+                    else openDiplomacyModal();
+                } else if (e.code === 'Escape') {
+                    closeModals();
+                }
+            });
+            window.addEventListener('keyup', e => { input.keys[e.code] = false; });
+
+            // =========================================================================
+            // 10. KİŞİSEL SAVAŞ, GÖREV, DİPLOMASİ, İŞÇİ ALIMI VE HANEDAN
+            // =========================================================================
+            const btnAttack = document.getElementById('btn-attack');
+            const btnInteract = document.getElementById('btn-interact');
+            const btnFerman = document.getElementById('btn-ferman');
+            const btnDiplomacy = document.getElementById('btn-diplomacy');
+            const interactLabel = document.getElementById('interact-label');
+            const targetPrompt = document.getElementById('target-prompt');
+            const crosshair = document.getElementById('crosshair');
+
+            let currentTarget = null;
+
+            function spawnDamagePopup(worldPos, dmg) {
+                const v = worldPos.clone();
+                v.y += 2.2;
+                v.project(camera);
+                if (v.z > 1) return;
+                const sx = (v.x * 0.5 + 0.5) * window.innerWidth;
+                const sy = (-v.y * 0.5 + 0.5) * window.innerHeight;
+
+                const el = document.createElement('div');
+                el.className = 'dmg-popup';
+                el.textContent = `-${dmg}`;
+                el.style.left = `${sx}px`;
+                el.style.top = `${sy}px`;
+                document.body.appendChild(el);
+                requestAnimationFrame(() => {
+                    el.style.transform = 'translateY(-34px) scale(1.15)';
+                    el.style.opacity = '0';
+                });
+                setTimeout(() => el.remove(), 620);
+            }
+
+            function performAttack() {
+                if (player.attackCooldown > 0 || gameState.modalOpen) return;
+                sound.init();
+                player.attackCooldown = 0.38;
+                player.swingTimer = 0.28;
+                sound.playSwordSwing();
+
+                const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+                const baseDmg = 34 + gameState.swordLevel * 12 + (gameState.spouseId === 'kael' ? 15 : 0);
+                let hitAny = false;
+
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const e = enemies[i];
+                    const toEnemy = new THREE.Vector3().subVectors(e.mesh.position, player.pos);
+                    toEnemy.y = 0;
+                    const dist = toEnemy.length();
+                    if (dist < 4.0) {
+                        toEnemy.normalize();
+                        if (forward.dot(toEnemy) > 0.25 || dist < 1.8) {
+                            e.hp -= baseDmg;
+                            e.mesh.position.addScaledVector(forward, 1.05);
+                            spawnDamagePopup(e.mesh.position, baseDmg);
+                            hitAny = true;
+                            if (e.hp <= 0) removeEnemy(i);
+                        }
+                    }
+                }
+                if (hitAny) {
+                    sound.playSwordHit();
+                    triggerFlash('rgba(255, 255, 255, 0.14)');
+                }
+            }
+
+            btnAttack.addEventListener('touchstart', e => { e.preventDefault(); performAttack(); }, { passive: false });
+            btnAttack.addEventListener('click', performAttack);
+
+            function findLookTarget() {
+                const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+                let best = null;
+                let bestScore = 0.62;
+
+                for (const npc of npcs) {
+                    const toNpc = new THREE.Vector3().subVectors(npc.mesh.position, player.pos);
+                    toNpc.y = 0;
+                    const dist = toNpc.length();
+                    if (dist < 4.6) {
+                        toNpc.normalize();
+                        const dot = forward.dot(toNpc);
+                        if (dot > bestScore) {
+                            bestScore = dot;
+                            best = { type: 'npc', data: npc, label: `💬 Konuş: ${npc.name}` };
+                        }
+                    }
+                }
+
+                const toThrone = new THREE.Vector3().subVectors(throneGroup.position, player.pos);
+                toThrone.y = 0;
+                if (toThrone.length() < 4.5 && forward.dot(toThrone.normalize()) > 0.6) {
+                    best = { type: 'throne', label: '👑 Tahta Otur / Ferman Ver' };
+                }
+
+                const toGate = new THREE.Vector3(0, 0, 52).sub(new THREE.Vector3(player.pos.x, 0, player.pos.z));
+                if (toGate.length() < 6.2 && forward.dot(toGate.normalize()) > 0.55) {
+                    best = { type: 'gate', label: gameState.gateClosed ? '🚪 Kale Kapısını Aç' : '🚪 Kale Kapısını Kapat' };
+                }
+
+                currentTarget = best;
+                if (best) {
+                    btnInteract.classList.add('ready');
+                    crosshair.classList.add('target-active');
+                    targetPrompt.textContent = best.label;
+                    targetPrompt.classList.add('visible');
+                    interactLabel.textContent = best.type === 'npc' ? 'KONUŞ' : 'KULLAN';
+                } else {
+                    btnInteract.classList.remove('ready');
+                    crosshair.classList.remove('target-active');
+                    targetPrompt.classList.remove('visible');
+                    interactLabel.textContent = 'ETKİLEŞİM';
+                }
+            }
+
+            function triggerInteract() {
+                if (!currentTarget || gameState.modalOpen) return;
+                sound.init();
+                sound.playInteract();
+
+                if (currentTarget.type === 'npc') openNpcModal(currentTarget.data);
+                else if (currentTarget.type === 'throne') openFermanModal();
+                else if (currentTarget.type === 'gate') {
+                    gameState.gateClosed = !gameState.gateClosed;
+                    sound.playDecree();
+                    showToast(gameState.gateClosed ? '🚪 Kale Kapısı kapatıldı!' : '🚪 Kale Kapısı açıldı!');
+                }
+            }
+
+            btnInteract.addEventListener('touchstart', e => { e.preventDefault(); triggerInteract(); }, { passive: false });
+            btnInteract.addEventListener('click', triggerInteract);
+            btnFerman.addEventListener('touchstart', e => { e.preventDefault(); openFermanModal(); }, { passive: false });
+            btnFerman.addEventListener('click', openFermanModal);
+            btnDiplomacy.addEventListener('touchstart', e => { e.preventDefault(); openDiplomacyModal(); }, { passive: false });
+            btnDiplomacy.addEventListener('click', openDiplomacyModal);
+
+            function getQuestProgressValue(q) {
+                if (q.id === 'bandit_hunt') return gameState.banditsKilled;
+                if (q.id === 'ore_supply') return gameState.materials;
+                if (q.id === 'farm_expansion') return gameState.hiredWorkers;
+                if (q.id === 'silk_caravan') return gameState.caravansSent;
+                if (q.id === 'rich_empire') return gameState.gold;
+                return 0;
+            }
+
+            function checkQuestProgress() {
+                const listEl = document.getElementById('quest-tracker-list');
+                const activeLines = [];
+
+                Object.values(quests).forEach(q => {
+                    if (q.accepted && !q.completed) {
+                        const val = Math.min(q.target, getQuestProgressValue(q));
+                        const done = val >= q.target;
+                        activeLines.push(`• ${q.title}: ${val}/${q.target} ${done ? '✅' : ''}`);
+                    }
+                });
+
+                listEl.innerHTML = activeLines.length > 0
+                    ? activeLines.join('<br>')
+                    : 'Boran, Rıza, Leyla, Kerem veya Altan ile konuşup görev al!';
+            }
+
+            function openNpcModal(npc) {
+                gameState.selectedNpc = npc;
+                gameState.modalOpen = true;
+                renderNpcModal();
+                document.getElementById('npc-modal').classList.add('open');
+            }
+
+            function renderNpcModal() {
+                const npc = gameState.selectedNpc;
+                if (!npc) return;
+
+                const isSpouse = gameState.spouseId === npc.id;
+                document.getElementById('npc-modal-name').textContent = (isSpouse ? '💍 ' : '') + npc.name;
+                document.getElementById('npc-modal-role').textContent = `${npc.title} • Görev: ${taskLabels[npc.task]}`;
+                document.getElementById('npc-stat-loyalty').textContent = `%${Math.round(npc.loyalty)}`;
+                document.getElementById('npc-stat-morale').textContent = `%${Math.round(npc.morale)}`;
+                document.getElementById('npc-stat-relation').textContent = `${Math.round(npc.relation)} / 100`;
+                document.getElementById('npc-dialogue').textContent = `"${npc.quote}"`;
+
+                const qBtns = document.getElementById('npc-quest-buttons');
+                qBtns.innerHTML = `
+                    <button class="choice-btn" onclick="npcQuickChat()">🗣️ Hal Hatır Sor & Sohbet Et<small>+4 Sadakat & +4 İlişki</small></button>
+                    <button class="choice-btn" onclick="npcRewardGold()">🪙 Bahşiş / Ödül Ver (25 Altın)<small>+12 Sadakat & +10 Moral</small></button>
+                `;
+
+                if (npc.questId && quests[npc.questId]) {
+                    const q = quests[npc.questId];
+                    const cur = Math.min(q.target, getQuestProgressValue(q));
+                    if (!q.accepted) {
+                        qBtns.innerHTML += `
+                            <button class="choice-btn quest-btn" onclick="acceptQuest('${q.id}')">
+                                ❗ YENİ GÖREV AL: ${q.title}
+                                <small>${q.desc} (Ödül: +${q.rewardGold} Altın)</small>
+                            </button>
+                        `;
+                    } else if (!q.completed && cur >= q.target) {
+                        qBtns.innerHTML += `
+                            <button class="choice-btn marry-btn" onclick="completeQuest('${q.id}')">
+                                🏆 GÖREVİ TESLİM ET VE ÖDÜLÜ AL (+${q.rewardGold} Altın)
+                            </button>
+                        `;
+                    } else if (!q.completed) {
+                        qBtns.innerHTML += `
+                            <button class="choice-btn quest-btn" disabled>
+                                ⏳ Devam Eden Görev: ${q.title} (${cur}/${q.target})
+                                <small>${q.desc}</small>
+                            </button>
+                        `;
+                    }
+                }
+
+                if (npc.id === 'riza') {
+                    qBtns.innerHTML += `
+                        <button class="choice-btn" onclick="kingdomAction('hire_miner'); renderNpcModal();">⛏️ Yeni Madenci İşe Al (75 Altın)<small>Madene yeni işçi ekler</small></button>
+                        <button class="choice-btn" onclick="kingdomAction('upgrade_sword'); renderNpcModal();">🗡️ Kral Kılıcını Güçlendir (85 Malzeme)<small>Saldırı hasarını artırır</small></button>
+                    `;
+                } else if (npc.id === 'leyla') {
+                    qBtns.innerHTML += `
+                        <button class="choice-btn" style="grid-column: span 2;" onclick="kingdomAction('hire_farmer'); renderNpcModal();">🌾 Yeni Tarımcı Çiftçi Al (65 Altın)<small>Tarlaya yeni çiftçi ekler</small></button>
+                    `;
+                }
+
+                const romSec = document.getElementById('romance-section');
+                const romBtns = document.getElementById('romance-buttons');
+                romBtns.innerHTML = '';
+
+                if (npc.marriageable) {
+                    romSec.style.display = 'block';
+                    document.getElementById('romance-title').textContent = `💖 Hanedan İlişkisi (${npc.bonusDesc})`;
+                    romBtns.innerHTML += `
+                        <button class="choice-btn romance-btn" onclick="romanceAction('compliment')">🌹 İltifat Et<small>+10 İlişki</small></button>
+                        <button class="choice-btn romance-btn" onclick="romanceAction('gift_gold')">💎 Mücevher Hediye Et<small>-35 Altın → +16 İlişki</small></button>
+                    `;
+                    if (!gameState.spouseId && npc.relation >= 80) {
+                        romBtns.innerHTML += `<button class="choice-btn marry-btn" onclick="romanceAction('propose')">👑 EVLENME TEKLİFİ ET (Kraliyet Düğünü)</button>`;
+                    } else if (isSpouse) {
+                        romBtns.innerHTML += `<button class="choice-btn marry-btn" onclick="romanceAction('heir')">👶 VARİS / VELİAHT DİLERİM</button>`;
+                    }
+                } else {
+                    romSec.style.display = 'none';
+                }
+            }
+
+            window.npcQuickChat = function() {
+                const npc = gameState.selectedNpc;
+                if (!npc) return;
+                npc.loyalty = Math.min(100, npc.loyalty + 4);
+                npc.relation = Math.min(100, npc.relation + 4);
+                const lines = [
+                    'Sizin gibi halkının arasına karışan bir hükümdar için canımız feda Majesteleri!',
+                    'Krallığımız her geçen gün daha da zenginleşiyor Kralım, herkes sizden övgüyle söz ediyor.',
+                    'Emriniz olduğu an kılıcımızla da kazmamızla da hazırız Hünkarım.'
+                ];
+                npc.quote = lines[Math.floor(Math.random() * lines.length)];
+                sound.playInteract();
+                renderNpcModal();
+            };
+
+            window.npcRewardGold = function() {
+                const npc = gameState.selectedNpc;
+                if (!npc) return;
+                if (gameState.gold < 25) return showToast('⚠️ 25 Altın gerekli!');
+                gameState.gold -= 25;
+                npc.loyalty = Math.min(100, npc.loyalty + 12);
+                npc.morale = Math.min(100, npc.morale + 10);
+                npc.relation = Math.min(100, npc.relation + 8);
+                npc.quote = 'Cömertliğiniz dillere destan Kralım! Var olun!';
+                sound.playCoin();
+                updateHud();
+                renderNpcModal();
+            };
+
+            window.acceptQuest = function(qid) {
+                const q = quests[qid];
+                if (!q) return;
+                q.accepted = true;
+                sound.playDecree();
+                showToast(`❗ Görev Alındı: ${q.title}`);
+                checkQuestProgress();
+                renderNpcModal();
+            };
+
+            window.completeQuest = function(qid) {
+                const q = quests[qid];
+                if (!q || q.completed) return;
+                q.completed = true;
+                gameState.gold += q.rewardGold || 0;
+                gameState.materials += q.rewardMat || 0;
+                gameState.food += q.rewardFood || 0;
+                gameState.morale = Math.min(100, gameState.morale + 10);
+                sound.playWeddingFanfare();
+                triggerFlash('rgba(250, 204, 21, 0.35)');
+                showToast(`🏆 Görev Tamamlandı: ${q.title}! (+${q.rewardGold} Altın)`);
+                updateHud();
+                checkQuestProgress();
+                renderNpcModal();
+            };
+
+            window.assignNpcTask = function(task) {
+                const npc = gameState.selectedNpc;
+                if (!npc) return;
+                npc.task = task;
+                npc.loyalty = Math.min(100, npc.loyalty + 2);
+                npc.visual.labelEl.querySelector('.role').textContent = `${npc.title} • ${taskLabels[task]}`;
+                sound.playDecree();
+                showToast(`📜 ${npc.name}: "${taskLabels[task]}" görevine atandı.`);
+                renderNpcModal();
+            };
+
+            window.romanceAction = function(act) {
+                const npc = gameState.selectedNpc;
+                if (!npc) return;
+
+                if (act === 'compliment') {
+                    npc.relation = Math.min(100, npc.relation + 10);
+                    npc.quote = 'Zarif sözleriniz kalbimi onurlandırdı Majesteleri.';
+                    sound.playInteract();
+                } else if (act === 'gift_gold') {
+                    if (gameState.gold < 35) return showToast('⚠️ 35 Altın gerekli.');
+                    gameState.gold -= 35;
+                    npc.relation = Math.min(100, npc.relation + 16);
+                    npc.quote = 'Bu eşsiz mücevher için çok teşekkür ederim Kralım!';
+                    sound.playCoin();
+                } else if (act === 'propose') {
+                    gameState.spouseId = npc.id;
+                    npc.title = npc.id === 'kael' ? 'Kraliyet Eşi (Prens)' : 'Kraliçe';
+                    npc.task = 'throne';
+                    npc.home.set(3.0, 0, -54.5);
+                    npc.visual.labelEl.querySelector('.role').textContent = `${npc.title} • Taht Odası`;
+                    if (npc.id === 'arya' || npc.id === 'kael') gameState.defense += 20;
+                    gameState.morale = Math.min(100, gameState.morale + 15);
+                    sound.playWeddingFanfare();
+                    triggerFlash('rgba(250, 204, 21, 0.45)');
+                    showToast(`💍 KRALİYET DÜĞÜNÜ! ${npc.name} ile evlendiniz! (${npc.bonusDesc})`);
+                } else if (act === 'heir') {
+                    const heirNames = ['Veliaht Prens Alparslan', 'Prenses Aybike', 'Veliaht Prens Kaan', 'Prenses Tomris'];
+                    const nextName = heirNames[gameState.heirs.length % heirNames.length];
+                    gameState.heirs.push(`${nextName} (Gün ${gameState.day})`);
+                    gameState.morale = Math.min(100, gameState.morale + 10);
+                    sound.playWeddingFanfare();
+                    showToast(`👶 Hanedana yeni varis katıldı: ${nextName}!`);
+                }
+                updateHud();
+                renderNpcModal();
+            };
+
+            function openFermanModal() {
+                gameState.modalOpen = true;
+                sound.init();
+                sound.playInteract();
+                renderFermanModal();
+                document.getElementById('ferman-modal').classList.add('open');
+            }
+
+            function renderFermanModal() {
+                let miners = 0, farmers = 0, soldiers = 0;
+                npcs.forEach(n => {
+                    if (n.task === 'mine') miners++;
+                    else if (n.task === 'farm') farmers++;
+                    else if (n.task === 'guard' || n.task === 'follow' || n.task === 'patrol') soldiers++;
+                });
+
+                document.getElementById('kingdom-summary').textContent =
+                    `Madenci: ${miners} • Tarımcı: ${farmers} • Asker: ${soldiers} • Kılıç Sv.${gameState.swordLevel}`;
+
+                ['low', 'normal', 'high'].forEach(lvl => {
+                    document.getElementById('tax-' + lvl).classList.toggle('active-policy', gameState.taxPolicy === lvl);
+                    document.getElementById('ration-' + lvl).classList.toggle('active-policy', gameState.rationPolicy === lvl);
+                });
+
+                const spouse = npcs.find(n => n.id === gameState.spouseId);
+                const spouseText = spouse ? `${spouse.name} (${spouse.bonusDesc})` : 'Henüz Evlenilmedi (İlişki 80+ gerekli)';
+                const heirsText = gameState.heirs.length > 0 ? gameState.heirs.join(', ') : 'Henüz varis doğmadı';
+
+                document.getElementById('dynasty-info').innerHTML = `
+                    <strong>Hükümdar:</strong> Kral I. Arslan (${getWealthTitle()})<br>
+                    <strong>Kraliyet Eşi:</strong> ${spouseText}<br>
+                    <strong>Veliaht / Varisler:</strong> ${heirsText}
+                `;
+            }
+
+            window.setPolicy = function(type, value) {
+                if (type === 'tax') gameState.taxPolicy = value;
+                if (type === 'ration') gameState.rationPolicy = value;
+                sound.playDecree();
+                showToast('📜 Yeni Kraliyet Fermanı mühürlendi!');
+                renderFermanModal();
+            };
+
+            window.kingdomAction = function(action) {
+                if (action === 'hire_miner') {
+                    if (gameState.gold < 75 || gameState.food < 25) return showToast('⚠️ 75 Altın ve 25 Erzak gerekli!');
+                    gameState.gold -= 75;
+                    gameState.food -= 25;
+                    spawnDynamicWorker('miner');
+                    sound.playDecree();
+                    showToast('⛏️ Yeni Maden İşçisi işe alındı ve Maden Ocağında çalışmaya başladı!');
+                } else if (action === 'hire_farmer') {
+                    if (gameState.gold < 65 || gameState.food < 20) return showToast('⚠️ 65 Altın ve 20 Erzak gerekli!');
+                    gameState.gold -= 65;
+                    gameState.food -= 20;
+                    spawnDynamicWorker('farmer');
+                    sound.playDecree();
+                    showToast('🌾 Yeni Tarımcı Çiftçi işe alındı ve tarlalarda hasada başladı!');
+                } else if (action === 'recruit') {
+                    if (gameState.gold < 95 || gameState.food < 40) return showToast('⚠️ 95 Altın ve 40 Erzak gerekli!');
+                    gameState.gold -= 95;
+                    gameState.food -= 40;
+                    spawnDynamicWorker('guard');
+                    gameState.defense += 10;
+                    sound.playDecree();
+                    showToast('⚔️ Yeni Kraliyet Askeri eğitildi ve surlara katıldı!');
+                } else if (action === 'upgrade_sword') {
+                    if (gameState.materials < 85 || gameState.gold < 90) return showToast('⚠️ 85 Malzeme ve 90 Altın gerekli!');
+                    gameState.materials -= 85;
+                    gameState.gold -= 90;
+                    gameState.swordLevel++;
+                    sound.playSwordHit();
+                    showToast(`🗡️ Kral Kılıcı Sv.${gameState.swordLevel} seviyesine dövüldü! (+12 Saldırı Hasarı)`);
+                } else if (action === 'feast') {
+                    if (gameState.gold < 70 || gameState.food < 55) return showToast('⚠️ 70 Altın ve 55 Erzak gerekli!');
+                    gameState.gold -= 70;
+                    gameState.food -= 55;
+                    gameState.morale = Math.min(100, gameState.morale + 18);
+                    npcs.forEach(n => { n.loyalty = Math.min(100, n.loyalty + 10); n.morale = Math.min(100, n.morale + 15); });
+                    sound.playWeddingFanfare();
+                    showToast('🍖 Kraliyet Ziyafeti verildi! Tüm halkın morali yükseldi!');
+                } else if (action === 'wall') {
+                    if (gameState.materials < 90 || gameState.gold < 50) return showToast('⚠️ 90 Malzeme ve 50 Altın gerekli!');
+                    gameState.materials -= 90;
+                    gameState.gold -= 50;
+                    gameState.defense += 25;
+                    gameState.castleLevel++;
+                    sound.playDecree();
+                    showToast('🧱 Surlar güçlendirildi! (+25 Savunma)');
+                } else if (action === 'workshop') {
+                    if (gameState.materials < 85 || gameState.gold < 65) return showToast('⚠️ 85 Malzeme ve 65 Altın gerekli!');
+                    gameState.materials -= 85;
+                    gameState.gold -= 65;
+                    gameState.productionBonus += 0.35;
+                    sound.playDecree();
+                    showToast('🏭 Dökümhane & Değirmen geliştirildi! Üretim +%35 arttı.');
+                } else if (action === 'heal') {
+                    if (gameState.gold < 30) return showToast('⚠️ 30 Altın gerekli!');
+                    gameState.gold -= 30;
+                    gameState.hp = gameState.maxHp;
+                    triggerFlash('rgba(52, 211, 153, 0.35)');
+                    sound.playInteract();
+                    showToast('🧪 Kraliyet Şifacısı yaralarınızı tamamen iyileştirdi!');
+                }
+                checkQuestProgress();
+                updateHud();
+                if (document.getElementById('ferman-modal').classList.contains('open')) renderFermanModal();
+            };
+
+            // =========================================================================
+            // 11. KOMŞU DEVLETLER, TİCARET KERVANI & SAVAŞ SİSTEMİ
+            // =========================================================================
+            function openDiplomacyModal() {
+                gameState.modalOpen = true;
+                sound.init();
+                sound.playInteract();
+                renderDiplomacyModal();
+                document.getElementById('diplomacy-modal').classList.add('open');
+            }
+
+            function renderDiplomacyModal() {
+                const activeCaravans = nations.filter(n => n.caravanDays > 0).length;
+                document.getElementById('diplomacy-summary').textContent =
+                    `Devlet Statüsü: ${getWealthTitle()} • Yoldaki Kervan: ${activeCaravans}`;
+
+                const container = document.getElementById('nations-list');
+                container.innerHTML = '';
+
+                nations.forEach(n => {
+                    const relColor = n.atWar ? '#f87171' : (n.allied ? '#4ade80' : '#fde68a');
+                    const statusText = n.atWar ? '⚔️ SAVAŞ HALİNDE' : (n.allied ? '🤝 MÜTTEFİK' : n.status);
+                    const caravanText = n.caravanDays > 0
+                        ? `🐪 Kervan Yolda (${n.caravanDays} gün sonra +${n.caravanReward} Altın)`
+                        : `🐪 Ticaret Kervanı Gönder (60 Malzeme + 40 Erzak → +${n.caravanReward} Altın)`;
+
+                    container.innerHTML += `
+                        <div class="nation-card">
+                            <div class="nation-head">
+                                <strong>🏰 ${n.name}</strong>
+                                <span class="nation-badge" style="color:${relColor}">${statusText} • İlişki: ${n.relation}</span>
+                            </div>
+                            <div style="font-size:11.5px; color:#d6ccc2; margin-bottom:8px;">${n.desc}</div>
+                            <div class="btn-grid">
+                                <button class="choice-btn" onclick="diplomacyAction('${n.id}', 'caravan')">
+                                    ${caravanText}
+                                    <small>Hazineyi zenginleştirir & ilişkiyi artırır</small>
+                                </button>
+                                <button class="choice-btn" onclick="diplomacyAction('${n.id}', 'alliance')">
+                                    🤝 Elçi & Hediye Gönder (100 Altın)
+                                    <small>+18 İlişki • 80+ olunca İttifak & Günlük Vergi/Haraç</small>
+                                </button>
+                                <button class="choice-btn" style="grid-column: span 2; border-color:#f87171;" onclick="diplomacyAction('${n.id}', 'war')">
+                                    ⚔️ ${n.atWar ? 'Barış Antlaşması İmzala (150 Altın)' : 'Sınır Akını & Savaş İlan Et'}
+                                    <small>${n.atWar ? 'Savaşı bitirir ve ticareti açar' : 'Düşman birliği kaleye saldırır; yenersen yüksek savaş ganimeti alırsın!'}</small>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            window.diplomacyAction = function(nationId, act) {
+                const n = nations.find(x => x.id === nationId);
+                if (!n) return;
+
+                if (act === 'caravan') {
+                    if (n.atWar) return showToast('⚠️ Savaş halindeki bir devlete kervan gönderemezsiniz!');
+                    if (n.caravanDays > 0) return showToast('🐪 Bu devlete giden kervanınız zaten yolda!');
+                    if (gameState.materials < 60 || gameState.food < 40) return showToast('⚠️ 60 Malzeme ve 40 Erzak gerekli!');
+                    gameState.materials -= 60;
+                    gameState.food -= 40;
+                    n.caravanDays = 1;
+                    n.relation = Math.min(100, n.relation + 8);
+                    gameState.caravansSent++;
+                    sound.playCoin();
+                    showToast(`🐪 ${n.name} yönüne ticaret kervanı yola çıktı! Yarın +${n.caravanReward} Altın getirecek.`);
+                } else if (act === 'alliance') {
+                    if (gameState.gold < 100) return showToast('⚠️ 100 Altın gerekli!');
+                    gameState.gold -= 100;
+                    n.relation = Math.min(100, n.relation + 18);
+                    if (n.relation >= 80 && !n.atWar) {
+                        n.allied = true;
+                        sound.playWeddingFanfare();
+                        showToast(`🤝 ${n.name} ile İTTİFAK kuruldu! Her gün +80 Altın ticaret vergisi ödeyecekler!`);
+                    } else {
+                        sound.playInteract();
+                        showToast(`📜 ${n.name} sarayına hediyeler sunuldu (+18 İlişki).`);
+                    }
+                } else if (act === 'war') {
+                    if (n.atWar) {
+                        if (gameState.gold < 150) return showToast('⚠️ Barış tazminatı için 150 Altın gerekli!');
+                        gameState.gold -= 150;
+                        n.atWar = false;
+                        n.relation = 40;
+                        sound.playDecree();
+                        showToast(`🕊️ ${n.name} ile barış antlaşması imzalandı.`);
+                    } else {
+                        n.atWar = true;
+                        n.allied = false;
+                        n.relation = 0;
+                        closeModals();
+                        startRaid(`⚔️ ${n.name} ordusu Güney Kapısına saldırdı!`, 10);
+                        return;
+                    }
+                }
+
+                checkQuestProgress();
+                updateHud();
+                renderDiplomacyModal();
+            };
+
+            window.closeModals = function() {
+                gameState.modalOpen = false;
+                gameState.selectedNpc = null;
+                document.getElementById('npc-modal').classList.remove('open');
+                document.getElementById('ferman-modal').classList.remove('open');
+                document.getElementById('diplomacy-modal').classList.remove('open');
+            };
+
+            // =========================================================================
+            // 12. ZAMAN DÖNGÜSÜ, GÜNLÜK ÜRETİM VE KERVAN GELİRLERİ
+            // =========================================================================
+            function processNewDay() {
+                gameState.day += 1;
+
+                let miners = 0;
+                let farmers = 0;
+                npcs.forEach(n => {
+                    if (n.task === 'mine') miners++;
+                    else if (n.task === 'farm') farmers++;
+                });
+
+                const taxGold = gameState.taxPolicy === 'low' ? 20 : gameState.taxPolicy === 'high' ? 95 : 55;
+                const taxMorale = gameState.taxPolicy === 'low' ? 4 : gameState.taxPolicy === 'high' ? -7 : 0;
+
+                const rationCost = gameState.rationPolicy === 'low' ? 15 : gameState.rationPolicy === 'high' ? 50 : 30;
+                const rationMorale = gameState.rationPolicy === 'low' ? -5 : gameState.rationPolicy === 'high' ? 6 : 1;
+
+                const spouseMult = gameState.spouseId === 'mira' ? 1.25 : 1.0;
+                let caravanProfit = 0;
+                let allianceTribute = 0;
+
+                nations.forEach(n => {
+                    if (n.caravanDays > 0) {
+                        n.caravanDays--;
+                        if (n.caravanDays === 0) {
+                            caravanProfit += Math.round(n.caravanReward * spouseMult);
+                        }
+                    }
+                    if (n.allied && !n.atWar) allianceTribute += 80;
+                });
+
+                const goldGain = Math.round((taxGold + miners * 18 + allianceTribute) * gameState.productionBonus * spouseMult) + caravanProfit;
+                const matGain = Math.round((20 + miners * 22) * gameState.productionBonus);
+                const foodGain = Math.round((25 + farmers * 28) * gameState.productionBonus);
+
+                gameState.gold += goldGain;
+                gameState.materials += matGain;
+                gameState.food = Math.max(0, gameState.food + foodGain - rationCost);
+
+                let moraleDelta = taxMorale + rationMorale + (gameState.spouseId === 'selin' ? 4 : 0);
+                if (gameState.food === 0) moraleDelta -= 12;
+                gameState.morale = Math.max(5, Math.min(100, gameState.morale + moraleDelta));
+
+                if (gameState.spouseId === 'selin') {
+                    gameState.hp = gameState.maxHp;
+                } else {
+                    gameState.hp = Math.min(gameState.maxHp, gameState.hp + 20);
+                }
+
+                if (gameState.spouseId && gameState.heirs.length === 0) {
+                    gameState.heirProgress++;
+                    if (gameState.heirProgress >= 2) {
+                        gameState.heirs.push(`Veliaht Prens Alparslan (Gün ${gameState.day})`);
+                        sound.playWeddingFanfare();
+                        showToast('👶 Müjde! Kraliyet ailesinin ilk varisi dünyaya geldi!');
+                    }
+                }
+
+                // Ormandaki haydut kampı temizlendiyse her 3 günde bir yeni haydutlar sızabilir
+                if (enemies.filter(e => e.isBanditCamp).length === 0 && gameState.day % 3 === 0) {
+                    populateBanditCamp();
+                }
+
+                showToast(`🌅 Gün ${gameState.day}: +${goldGain} Altın, +${foodGain - rationCost} Erzak, +${matGain} Malzeme`);
+                checkQuestProgress();
+
+                if (gameState.day >= 2 && (gameState.day - gameState.lastRaidDay >= 2)) {
+                    startRaid();
+                }
+            }
+
+            function updateHud() {
+                const hrs = Math.floor(gameState.hour).toString().padStart(2, '0');
+                const mins = Math.floor((gameState.hour % 1) * 60).toString().padStart(2, '0');
+                document.getElementById('hud-time').textContent = `👑 Gün ${gameState.day} • ${hrs}:${mins}`;
+                document.getElementById('hud-hp').textContent = `❤️ ${Math.round(gameState.hp)}/${gameState.maxHp}`;
+                document.getElementById('hud-gold').textContent = `🪙 ${gameState.gold}`;
+                document.getElementById('hud-food').textContent = `🌾 ${gameState.food}`;
+                document.getElementById('hud-mat').textContent = `⚒️ ${gameState.materials}`;
+                document.getElementById('hud-moral').textContent = `🎭 %${Math.round(gameState.morale)}`;
+                document.getElementById('hud-wealth').textContent = getWealthTitle();
+            }
+
+            document.getElementById('btn-speed').addEventListener('click', () => {
+                gameState.timeSpeed = gameState.timeSpeed === 1 ? 3 : 1;
+                document.getElementById('btn-speed').textContent = `⏩ ${gameState.timeSpeed}x`;
+            });
+
+            document.getElementById('btn-skip').addEventListener('click', () => {
+                sound.init();
+                gameState.hour += 6;
+                if (gameState.hour >= 24) {
+                    gameState.hour -= 24;
+                    processNewDay();
+                } else {
+                    showToast('⏭️ Zaman 6 saat ileri alındı.');
+                }
+                updateHud();
+            });
+
+            document.getElementById('btn-audio').addEventListener('click', () => {
+                sound.init();
+                const active = sound.toggleMute();
+                document.getElementById('btn-audio').textContent = active ? '🔊 Ses' : '🔇 Sessiz';
+            });
+
+            function showToast(msg) {
+                const container = document.getElementById('toast-container');
+                const el = document.createElement('div');
+                el.className = 'toast-msg';
+                el.textContent = msg;
+                container.appendChild(el);
+                setTimeout(() => {
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 250);
+                }, 3100);
+            }
+
+            function triggerFlash(color) {
+                const flash = document.getElementById('screen-flash');
+                flash.style.background = color;
+                flash.style.opacity = '1';
+                setTimeout(() => { flash.style.opacity = '0'; }, 200);
+            }
+
+            // =========================================================================
+            // 13. ANA OYUN DÖNGÜSÜ (HAREKET, YAPAY ZEKA, MİNİ-RADAR, PROJEKSİYON)
+            // =========================================================================
+            function checkCollision(nx, nz) {
+                if (nx < -56 || nx > 56 || nz < -58 || nz > 125) return true;
+                if (gameState.gateClosed && Math.abs(nx) < 6.2 && Math.abs(nz - 52) < 1.2) return true;
+
+                for (const c of colliders) {
+                    if (nx > c.minX && nx < c.maxX && nz > c.minZ && nz < c.maxZ) return true;
+                }
+                return false;
+            }
+
+            function updatePlayer(dt) {
+                let forwardInput = -input.moveY;
+                let rightInput = input.moveX;
+
+                if (input.keys['KeyW'] || input.keys['ArrowUp']) forwardInput += 1;
+                if (input.keys['KeyS'] || input.keys['ArrowDown']) forwardInput -= 1;
+                if (input.keys['KeyD'] || input.keys['ArrowRight']) rightInput += 1;
+                if (input.keys['KeyA'] || input.keys['ArrowLeft']) rightInput -= 1;
+
+                const len = Math.hypot(forwardInput, rightInput);
+                if (len > 0.05) {
+                    const normF = forwardInput / Math.max(1, len);
+                    const normR = rightInput / Math.max(1, len);
+                    const running = input.isRunning || input.keys['ShiftLeft'];
+                    const spd = running ? player.runSpeed : player.speed;
+
+                    const fwdX = -Math.sin(player.yaw);
+                    const fwdZ = -Math.cos(player.yaw);
+                    const rgtX = Math.cos(player.yaw);
+                    const rgtZ = -Math.sin(player.yaw);
+
+                    const vx = (fwdX * normF + rgtX * normR) * spd * dt;
+                    const vz = (fwdZ * normF + rgtZ * normR) * spd * dt;
+
+                    if (!checkCollision(player.pos.x + vx, player.pos.z)) player.pos.x += vx;
+                    if (!checkCollision(player.pos.x, player.pos.z + vz)) player.pos.z += vz;
+
+                    player.pos.y = 1.75 + Math.sin(performance.now() * (running ? 0.015 : 0.01)) * 0.055;
+                    sound.playStep(running);
+                } else {
+                    player.pos.y += (1.75 - player.pos.y) * 10 * dt;
+                }
+
+                camera.position.copy(player.pos);
+                const euler = new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ');
+                camera.quaternion.setFromEuler(euler);
+
+                if (player.attackCooldown > 0) player.attackCooldown -= dt;
+                if (player.swingTimer > 0) {
+                    player.swingTimer -= dt;
+                    const p = 1 - (player.swingTimer / 0.28);
+                    const swingAngle = Math.sin(p * Math.PI);
+                    weaponPivot.rotation.x = -swingAngle * 1.2;
+                    weaponPivot.rotation.y = swingAngle * 0.7;
+                } else {
+                    weaponPivot.rotation.x = Math.sin(performance.now() * 0.003) * 0.02;
+                    weaponPivot.rotation.y = 0;
+                }
+            }
+
+            function updateNpcsAndEnemies(dt) {
+                const targetGateY = gameState.gateClosed ? 2.8 : 7.8;
+                gateMesh.position.y += (targetGateY - gateMesh.position.y) * 5 * dt;
+                windmillBlades.rotation.x += dt * 0.9;
+
+                const nowSec = performance.now() * 0.001;
+
+                npcs.forEach((npc, idx) => {
+                    let targetPos = npc.home.clone();
+
+                    if (npc.task === 'mine') {
+                        targetPos.set(-35 - (idx % 3) * 2.2, 0, 29 + (idx % 4) * 2.5);
+                    } else if (npc.task === 'farm') {
+                        targetPos.set(27 + (idx % 4) * 3, 0, 17 + (idx % 4) * 3.5);
+                    } else if (npc.task === 'guard') {
+                        targetPos.copy(npc.home);
+                    } else if (npc.task === 'patrol') {
+                        targetPos.set(
+                            npc.home.x + Math.cos(nowSec * 0.45 + idx) * 9,
+                            0,
+                            npc.home.z + Math.sin(nowSec * 0.45 + idx) * 9
+                        );
+                    } else if (npc.task === 'follow') {
+                        const angle = idx * 1.1;
+                        targetPos.set(player.pos.x + Math.cos(angle) * 2.6, 0, player.pos.z + Math.sin(angle) * 2.6);
+                    }
+
+                    let nearestEnemy = null;
+                    let nearestDist = gameState.raidActive ? 85 : 22;
+                    if (npc.task === 'guard' || npc.task === 'follow' || npc.task === 'patrol') {
+                        enemies.forEach(e => {
+                            const d = npc.mesh.position.distanceTo(e.mesh.position);
+                            if (d < nearestDist) { nearestDist = d; nearestEnemy = e; }
+                        });
+                        if (nearestEnemy) targetPos.copy(nearestEnemy.mesh.position);
+                    }
+
+                    const diff = new THREE.Vector3().subVectors(targetPos, npc.mesh.position);
+                    diff.y = 0;
+                    const dist = diff.length();
+
+                    if (dist > 1.35) {
+                        diff.normalize();
+                        const moveSpd = nearestEnemy ? 4.8 : 2.7;
+                        npc.mesh.position.addScaledVector(diff, moveSpd * dt);
+                        npc.mesh.rotation.y = Math.atan2(diff.x, diff.z);
+                        npc.animPhase += dt * 9;
+                        npc.visual.legL.rotation.x = Math.sin(npc.animPhase) * 0.55;
+                        npc.visual.legR.rotation.x = -Math.sin(npc.animPhase) * 0.55;
+                        npc.visual.armLPivot.rotation.x = -Math.sin(npc.animPhase) * 0.45;
+                        npc.visual.armRPivot.rotation.x = Math.sin(npc.animPhase) * 0.45;
+                    } else {
+                        npc.visual.legL.rotation.x = 0;
+                        npc.visual.legR.rotation.x = 0;
+                        if (nearestEnemy && dist <= 2.3) {
+                            npc.attackTimer -= dt;
+                            npc.visual.armRPivot.rotation.x = -1.2 + Math.sin(performance.now() * 0.015) * 0.8;
+                            if (npc.attackTimer <= 0) {
+                                npc.attackTimer = 1.05;
+                                const spouseArmyMult = gameState.spouseId === 'arya' ? 1.35 : 1.0;
+                                nearestEnemy.hp -= (16 + gameState.defense * 0.22) * spouseArmyMult;
+                                if (nearestEnemy.hp <= 0) {
+                                    const eIdx = enemies.indexOf(nearestEnemy);
+                                    if (eIdx !== -1) removeEnemy(eIdx);
+                                }
+                            }
+                        } else if (npc.task === 'mine' || npc.task === 'farm') {
+                            npc.visual.armRPivot.rotation.x = -0.8 + Math.sin(performance.now() * 0.008 + idx) * 0.6;
+                        } else {
+                            const toPlayer = new THREE.Vector3().subVectors(player.pos, npc.mesh.position);
+                            if (toPlayer.length() < 6) {
+                                npc.mesh.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+                            }
+                            npc.visual.armRPivot.rotation.x = 0;
+                        }
+                    }
+                });
+
+                // Düşman & Haydut Yapay Zekası
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const e = enemies[i];
+                    const distToPlayer = e.mesh.position.distanceTo(player.pos);
+                    if (e.isBanditCamp && distToPlayer > 24) continue;
+
+                    let targetPos = player.pos;
+                    let targetNpc = null;
+                    let minD = distToPlayer;
+
+                    npcs.forEach(n => {
+                        if (n.task === 'guard' || n.task === 'follow' || n.task === 'patrol') {
+                            const d = e.mesh.position.distanceTo(n.mesh.position);
+                            if (d < minD) { minD = d; targetPos = n.mesh.position; targetNpc = n; }
+                        }
+                    });
+
+                    const diff = new THREE.Vector3().subVectors(targetPos, e.mesh.position);
+                    diff.y = 0;
+                    const dist = diff.length();
+
+                    const blockedByGate = gameState.gateClosed && e.mesh.position.z > 52.3 && e.mesh.position.z < 54.5 && Math.abs(e.mesh.position.x) < 6.2;
+
+                    if (dist > 1.85 && !blockedByGate) {
+                        diff.normalize();
+                        e.mesh.position.addScaledVector(diff, e.speed * dt);
+                        e.mesh.rotation.y = Math.atan2(diff.x, diff.z);
+                        e.animPhase += dt * 10;
+                        e.visual.legL.rotation.x = Math.sin(e.animPhase) * 0.65;
+                        e.visual.legR.rotation.x = -Math.sin(e.animPhase) * 0.65;
+                    } else {
+                        e.attackTimer -= dt;
+                        e.visual.armRPivot.rotation.x = -1.3 + Math.sin(performance.now() * 0.016) * 0.9;
+                        if (e.attackTimer <= 0) {
+                            e.attackTimer = 1.45;
+                            if (!targetNpc && dist <= 2.4 && !blockedByGate) {
+                                const dmg = Math.max(4, 14 - Math.floor(gameState.defense / 14));
+                                gameState.hp = Math.max(0, gameState.hp - dmg);
+                                triggerFlash('rgba(220, 38, 38, 0.42)');
+                                sound.playSwordHit();
+                                updateHud();
+                                if (gameState.hp <= 0) {
+                                    gameState.hp = 70;
+                                    player.pos.set(0, 1.75, -50);
+                                    showToast('⚠️ Ağır yaralandınız ve Saray Şifahanesinde toparlandınız!');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            const tempVec = new THREE.Vector3();
+            function updateLabels() {
+                const allChars = [...npcs, ...enemies];
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+
+                allChars.forEach(c => {
+                    tempVec.copy(c.mesh.position);
+                    tempVec.y += 2.38;
+                    const dist = tempVec.distanceTo(camera.position);
+
+                    if (dist > 23) {
+                        c.visual.labelEl.style.display = 'none';
+                        return;
+                    }
+
+                    tempVec.project(camera);
+                    if (tempVec.z > 1) {
+                        c.visual.labelEl.style.display = 'none';
+                        return;
+                    }
+
+                    const x = (tempVec.x * 0.5 + 0.5) * w;
+                    const y = (-tempVec.y * 0.5 + 0.5) * h;
+
+                    c.visual.labelEl.style.display = 'block';
+                    c.visual.labelEl.style.left = `${x}px`;
+                    c.visual.labelEl.style.top = `${y}px`;
+                    c.visual.labelEl.style.opacity = Math.max(0.25, 1 - dist / 23).toFixed(2);
+
+                    if (c.hp !== undefined && c.maxHp) {
+                        const fill = c.visual.labelEl.querySelector('.enemy-hp-fill');
+                        if (fill) fill.style.width = `${Math.max(0, (c.hp / c.maxHp) * 100)}%`;
+                    }
+                });
+            }
+
+            const minimapCanvas = document.getElementById('minimap-canvas');
+            const mmCtx = minimapCanvas.getContext('2d');
+            function updateMinimap() {
+                const size = 96;
+                const half = size / 2;
+                const scale = 0.65;
+
+                mmCtx.clearRect(0, 0, size, size);
+                mmCtx.save();
+                mmCtx.translate(half, half);
+                mmCtx.rotate(player.yaw);
+
+                mmCtx.strokeStyle = 'rgba(212, 175, 55, 0.55)';
+                mmCtx.lineWidth = 2;
+                mmCtx.strokeRect((-58 - player.pos.x) * scale, (-60 - player.pos.z) * scale, 116 * scale, 112 * scale);
+
+                npcs.forEach(n => {
+                    const dx = (n.mesh.position.x - player.pos.x) * scale;
+                    const dz = (n.mesh.position.z - player.pos.z) * scale;
+                    if (Math.hypot(dx, dz) > half - 4) return;
+                    mmCtx.fillStyle = n.marriageable ? '#f472b6' : (n.task === 'guard' || n.task === 'follow' || n.task === 'patrol' ? '#60a5fa' : '#4ade80');
+                    mmCtx.beginPath();
+                    mmCtx.arc(dx, dz, 2.2, 0, Math.PI * 2);
+                    mmCtx.fill();
+                });
+
+                enemies.forEach(e => {
+                    const dx = (e.mesh.position.x - player.pos.x) * scale;
+                    const dz = (e.mesh.position.z - player.pos.z) * scale;
+                    if (Math.hypot(dx, dz) > half - 4) return;
+                    mmCtx.fillStyle = '#ef4444';
+                    mmCtx.beginPath();
+                    mmCtx.arc(dx, dz, 2.8, 0, Math.PI * 2);
+                    mmCtx.fill();
+                });
+
+                mmCtx.restore();
+
+                mmCtx.fillStyle = '#ffd15c';
+                mmCtx.beginPath();
+                mmCtx.moveTo(half, half - 5);
+                mmCtx.lineTo(half - 3.5, half + 4);
+                mmCtx.lineTo(half + 3.5, half + 4);
+                mmCtx.closePath();
+                mmCtx.fill();
+            }
+
+            function updateDayNightLighting() {
+                const t = gameState.hour;
+                let skyHex = 0x87a8c4;
+                let sunInt = 0.96;
+
+                if (t >= 20 || t < 5) {
+                    skyHex = 0x131926;
+                    sunInt = 0.28;
+                } else if (t >= 17 || t < 7) {
+                    skyHex = 0xc27849;
+                    sunInt = 0.62;
+                }
+
+                scene.background.setHex(skyHex);
+                scene.fog.color.setHex(skyHex);
+                dirLight.intensity = sunInt;
+
+                const now = performance.now() * 0.008;
+                torches.forEach((tr, i) => {
+                    tr.light.intensity = tr.baseIntensity + Math.sin(now + i * 2) * 0.2;
+                });
+            }
+
+            let lastFrameTime = performance.now();
+            let hudTimer = 0;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const now = performance.now();
+                const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+                lastFrameTime = now;
+
+                if (gameState.started && !gameState.modalOpen) {
+                    gameState.hour += dt * 0.28 * gameState.timeSpeed;
+                    if (gameState.hour >= 24) {
+                        gameState.hour -= 24;
+                        processNewDay();
+                    }
+
+                    updatePlayer(dt);
+                    updateNpcsAndEnemies(dt);
+                    findLookTarget();
+
+                    hudTimer += dt;
+                    if (hudTimer >= 0.25) {
+                        hudTimer = 0;
+                        updateHud();
+                    }
+                }
+
+                updateDayNightLighting();
+                updateLabels();
+                updateMinimap();
+                renderer.render(scene, camera);
+            }
+
+            startBtn.addEventListener('click', () => {
+                sound.init();
+                sound.playDecree();
+                gameState.started = true;
+                document.getElementById('boot-screen').style.display = 'none';
+                updateHud();
+                checkQuestProgress();
+                showToast('👑 Tahta hoş geldiniz Kralım! Halkınızla konuşun, işçi alın ve imparatorluğunuzu büyütün.');
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            updateHud();
+            updateLabels();
+            updateMinimap();
+            renderer.render(scene, camera);
+
+            bootStatus.textContent = '✅ İmparatorluk Hazır! (360x360 Açık Dünya • 3 Komşu Devlet • Haydut Kampı)';
+            startBtn.style.display = 'inline-block';
+
+            animate();
+        } catch (err) {
+            showBootError('Oyun başlatılırken hata oluştu: ' + (err && err.message ? err.message : String(err)));
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', bootGame);
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        bootGame();
+    }
+    </script>
+</body>
+</html>
